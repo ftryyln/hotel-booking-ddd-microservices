@@ -16,6 +16,7 @@ type Config struct {
 	PaymentServiceURL  string
 	BookingServiceURL  string
 	NotificationURL    string
+	AuthServiceURL     string
 	AggregateTargetURL string
 	RateLimitPerMinute int
 }
@@ -38,6 +39,7 @@ func Load() Config {
 		PaymentServiceURL:  getEnv("PAYMENT_SERVICE_URL", "http://payment-service:8083"),
 		BookingServiceURL:  getEnv("BOOKING_SERVICE_URL", "http://booking-service:8082"),
 		NotificationURL:    getEnv("NOTIFICATION_SERVICE_URL", "http://notification-service:8085"),
+		AuthServiceURL:     getEnv("AUTH_SERVICE_URL", "http://auth-service:8080"),
 		AggregateTargetURL: getEnv("AGGREGATE_TARGET_URL", "http://hotel-service:8081"),
 		RateLimitPerMinute: limit,
 	}

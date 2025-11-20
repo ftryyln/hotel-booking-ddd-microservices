@@ -96,6 +96,7 @@ Copy `.env.example` to `.env` (or supply env vars in compose):
 | `PAYMENT_SERVICE_URL`       | `http://payment-service:8083`                | Booking service -> payment client target     |
 | `BOOKING_SERVICE_URL`       | `http://booking-service:8082`                | Payment service -> booking status callback   |
 | `NOTIFICATION_SERVICE_URL`  | `http://notification-service:8085`           | Booking service -> notification client       |
+| `AUTH_SERVICE_URL`          | `http://auth-service:8080`                   | Gateway proxy target for auth routes         |
 | `AGGREGATE_TARGET_URL`      | `http://hotel-service:8081`                  | Gateway reverse proxy target for `/proxy`    |
 | `RATE_LIMIT_PER_MINUTE`     | `120`                                        | Gateway rate limiter                         |
 
@@ -197,11 +198,62 @@ Target coverage: ~45–60% concentrating on business logic layers.
 
 ---
 
+## Service Flows
+
+### Authentication
+1. `POST /auth/register` (via gateway or service)  
+   - Email is normalized.  
+   - Password hashed with bcrypt.  
+   - Role must be `admin` or `customer` (defaults to `customer`).  
+   - New row inserted into `users` and tokens issued immediately.
+2. `POST /auth/login`  
+   - Credentials verified against stored hash.  
+   - Returns `access_token` + `refresh_token`.
+3. Protected requests  
+   - Gateway’s JWT middleware checks `Authorization: Bearer <token>` and injects claims for downstream handlers.
+
+### Hotel Inventory
+1. Admin uses hotel service endpoints (`/hotels`, `/room-types`, `/rooms`) to populate inventory.
+2. Public clients can list hotels/room types without auth.
+3. Availability stub ensures booking service can call into hotel service for nightly price & stock validation.
+
+### Booking Lifecycle
+1. Customer calls `POST /bookings` with `room_type_id`, `check_in`, `check_out`.  
+   - Use case computes `total_nights`, `total_price`, validates overlaps.  
+   - Status set to `pending_payment`.
+2. `PATCH /bookings/{id}/cancel` performs cancellation rules (e.g., only pending/confirmed).  
+3. `POST /bookings/{id}/checkin` and `/checkout` transition states through `checked_in` → `completed`.
+4. Booking service emits events to notification service (via HTTP) for confirmation emails/logs.
+
+### Payment + Refund
+1. `POST /payments`  
+   - Booking service requests payment initiation → payment service hits `PaymentProvider` (mock Midtrans/Xendit) returning `payment_url` or VA number.  
+   - Payment record stored with `status=pending`.
+2. Provider webhook → `POST /payments/webhook`  
+   - HMAC signature verified using `PAYMENT_PROVIDER_KEY`.  
+   - Payment status updated, booking status automatically set to `confirmed`/`failed`.  
+   - Notification service triggered on success.
+3. Refunds via `POST /payments/{id}/refund`  
+   - Calls provider mock, records `refunds` row, updates booking/payment status accordingly.
+
+### Notifications
+1. Booking confirmed or payment paid → booking/payment services call notification service.  
+2. Notification service logs payload (placeholder for SMTP/SMS integrations).  
+3. Future integrations can swap logger implementation with email provider by implementing `domain.Notifier`.
+
+### API Gateway & Aggregation
+1. `GET /gateway/aggregate/bookings/{id}`  
+   - Gateway fetches booking service response + payment service response.  
+   - Returns merged DTO for UI convenience.  
+2. `/gateway/auth/*` proxies directly to auth service with relaxed middleware (CORS enabled for Swagger/Postman).
+
+---
+
 ## Example Workflow (Manual / Postman)
 
 1. **Register admin user**
    ```
-   POST http://localhost:8080/register
+   POST http://localhost:8080/auth/register
    {
      "email": "admin@example.com",
      "password": "Secret123!",
@@ -216,19 +268,18 @@ Target coverage: ~45–60% concentrating on business logic layers.
    {
      "user_id": "customer-uuid",
      "room_type_id": "roomtype-uuid",
-     "check_in": "2025-12-20T15:00:00Z",
-     "check_out": "2025-12-23T11:00:00Z",
-     "guests": 2
+     "check_in": "2025-12-20",
+     "check_out": "2025-12-23"
    }
    ```
-5. **Initiate payment** via Payment service.
+5. **Initiate payment** via Payment service (`POST /payments`).
 6. **Simulate webhook** (mock) to mark payment paid:
    ```
-   POST /payments/webhook
+   POST http://localhost:8083/payments/webhook
    {
      "payment_id": "...",
      "status": "paid",
-     "signature": "<hmac of payload>"
+     "signature": "<hmac payload>"
    }
    ```
    Booking status auto-updates to `confirmed`.

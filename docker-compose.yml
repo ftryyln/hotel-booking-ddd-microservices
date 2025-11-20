@@ -10,6 +10,13 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+      - ./migrations:/app/migrations:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   adminer:
     image: adminer:4
@@ -27,7 +34,8 @@ services:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/hotel?sslmode=disable
       JWT_SECRET: super-secret
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     ports:
       - "8080:8080"
 
@@ -39,7 +47,8 @@ services:
       HTTP_PORT: ":8081"
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/hotel?sslmode=disable
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     ports:
       - "8081:8081"
 
@@ -53,9 +62,12 @@ services:
       PAYMENT_SERVICE_URL: http://payment-service:8083
       NOTIFICATION_SERVICE_URL: http://notification-service:8085
     depends_on:
-      - postgres
-      - payment-service
-      - notification-service
+      postgres:
+        condition: service_healthy
+      payment-service:
+        condition: service_started
+      notification-service:
+        condition: service_started
     ports:
       - "8082:8082"
 
@@ -69,7 +81,8 @@ services:
       PAYMENT_PROVIDER_KEY: sandbox-key
       BOOKING_SERVICE_URL: http://booking-service:8082
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     ports:
       - "8083:8083"
 
@@ -99,5 +112,16 @@ services:
     ports:
       - "8088:8088"
 
+  swagger-ui:
+    image: swaggerapi/swagger-ui
+    ports:
+      - "8087:8080"
+    environment:
+      SWAGGER_JSON: /app/swagger.yaml
+    volumes:
+      - ./docs/swagger/swagger.yaml:/app/swagger.yaml:ro
+    depends_on:
+      - api-gateway
+      
 volumes:
   pgdata: {}

@@ -1,4 +1,4 @@
-basePath: /
+basePath: /gateway
 definitions:
   github_com_ftryyln_hotel-booking-microservices_pkg_dto.AuthResponse:
     properties:
@@ -184,6 +184,7 @@ definitions:
       price:
         type: number
     type: object
+host: localhost:8088
 info:
   contact: {}
   description: Aggregated API surface for hotel booking platform.

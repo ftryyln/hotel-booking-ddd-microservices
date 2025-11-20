@@ -9,7 +9,8 @@
         "contact": {},
         "version": "1.0"
     },
-    "basePath": "/",
+    "host": "localhost:8088",
+    "basePath": "/gateway",
     "paths": {
         "/auth/login": {
             "post": {

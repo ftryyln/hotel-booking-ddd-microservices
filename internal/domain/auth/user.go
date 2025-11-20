@@ -9,11 +9,11 @@ import (
 
 // User represents auth entity.
 type User struct {
-	ID        uuid.UUID
-	Email     string
-	Password  string
-	Role      string
-	CreatedAt time.Time
+	ID        uuid.UUID `db:"id"`
+	Email     string    `db:"email"`
+	Password  string    `db:"password"`
+	Role      string    `db:"role"`
+	CreatedAt time.Time `db:"created_at"`
 }
 
 // UserRepository persists users.

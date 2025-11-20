@@ -23,17 +23,29 @@ func NewService(repo domain.UserRepository, issuer domain.TokenIssuer) *Service 
 	return &Service{repo: repo, issuer: issuer}
 }
 
+var allowedRoles = map[string]struct{}{
+	"customer": {},
+	"admin":    {},
+}
+
 // Register creates new user and issues tokens.
 func (s *Service) Register(ctx context.Context, req dto.RegisterRequest) (dto.AuthResponse, error) {
-	if !strings.Contains(req.Email, "@") {
+	email := strings.ToLower(strings.TrimSpace(req.Email))
+	if !strings.Contains(email, "@") {
 		return dto.AuthResponse{}, errors.New("bad_request", "invalid email")
 	}
+	req.Email = email
 	if req.Password == "" {
 		return dto.AuthResponse{}, errors.New("bad_request", "password required")
 	}
 	if req.Role == "" {
 		req.Role = "customer"
 	}
+	role := strings.ToLower(strings.TrimSpace(req.Role))
+	if _, ok := allowedRoles[role]; !ok {
+		return dto.AuthResponse{}, errors.New("bad_request", "invalid role")
+	}
+	req.Role = role
 
 	if _, err := s.repo.FindByEmail(ctx, req.Email); err == nil {
 		return dto.AuthResponse{}, errors.New("conflict", "email already used")
@@ -61,7 +73,8 @@ func (s *Service) Register(ctx context.Context, req dto.RegisterRequest) (dto.Au
 
 // Login verifies credentials.
 func (s *Service) Login(ctx context.Context, req dto.LoginRequest) (dto.AuthResponse, error) {
-	user, err := s.repo.FindByEmail(ctx, req.Email)
+	email := strings.ToLower(strings.TrimSpace(req.Email))
+	user, err := s.repo.FindByEmail(ctx, email)
 	if err != nil {
 		return dto.AuthResponse{}, errors.New("unauthorized", "invalid credentials")
 	}

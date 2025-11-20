@@ -1,0 +1,32 @@
+# Binary and build artifacts
+bin/
+*.exe
+*.dll
+*.so
+
+# Go build cache
+*.test
+*.out
+
+# IDE/editor directories
+.idea/
+.vscode/
+*.code-workspace
+
+# Dependencies
+vendor/
+
+# Environment & config overrides
+.env
+.env.local
+
+# Generated docs
+docs/swagger/docs.go
+docs/swagger/swagger.json
+docs/swagger/swagger.yaml
+
+# Coverage
+coverage.*
+
+# Docker
+*.log

@@ -3,7 +3,8 @@ package main
 // @title Hotel Booking Microservices API
 // @version 1.0
 // @description Aggregated API surface for hotel booking platform.
-// @BasePath /
+// @host localhost:8088
+// @BasePath /gateway
 // @schemes http
 // @securityDefinitions.apikey BearerAuth
 // @in header
@@ -11,10 +12,14 @@ package main
 
 import (
 	"context"
+	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os/signal"
 	"syscall"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/cors"
 
 	"github.com/ftryyln/hotel-booking-microservices/internal/infrastructure/gateway"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/config"
@@ -32,9 +37,26 @@ func main() {
 
 	handler := gateway.NewHandler(cfg.BookingServiceURL, cfg.PaymentServiceURL, cfg.AggregateTargetURL, cfg.RateLimitPerMinute)
 
+	authTarget, _ := url.Parse(cfg.AuthServiceURL)
+	if authTarget.Path == "" || authTarget.Path == "/" {
+		authTarget.Path = "/auth"
+	}
+	authProxy := httputil.NewSingleHostReverseProxy(authTarget)
+
 	r := chi.NewRouter()
-	r.Use(middleware.JWT(cfg.JWTSecret))
-	r.Mount("/gateway", handler.Routes())
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"*"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	}))
+	r.Mount("/gateway/auth", http.StripPrefix("/gateway/auth", authProxy))
+	r.Group(func(router chi.Router) {
+		router.Use(middleware.JWT(cfg.JWTSecret))
+		router.Mount("/gateway", handler.Routes())
+	})
 
 	srv := server.New(cfg.HTTPPort, r, log)
 	srv.Start()
