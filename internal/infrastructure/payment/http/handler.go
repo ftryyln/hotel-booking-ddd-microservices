@@ -11,6 +11,7 @@ import (
 	"github.com/ftryyln/hotel-booking-microservices/internal/usecase/payment"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/dto"
 	pkgErrors "github.com/ftryyln/hotel-booking-microservices/pkg/errors"
+	"github.com/ftryyln/hotel-booking-microservices/pkg/utils"
 )
 
 // Handler exposes payment endpoints.
@@ -65,7 +66,8 @@ func (h *Handler) createPayment(w http.ResponseWriter, r *http.Request) {
 		writeError(w, pkgErrors.FromError(err))
 		return
 	}
-	writeJSON(w, http.StatusCreated, resp)
+	resource := utils.NewResource(resp.ID, "payment", "/api/v1/payments/"+resp.ID, resp)
+	utils.Respond(w, http.StatusCreated, "payment initiated", resource)
 }
 
 // @Summary Payment webhook
@@ -86,11 +88,12 @@ func (h *Handler) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		writeError(w, pkgErrors.FromError(err))
 		return
 	}
-	writeJSON(w, http.StatusOK, webhookResponse{
+	resource := utils.NewResource(req.PaymentID, "payment", "/api/v1/payments/"+req.PaymentID, webhookResponse{
 		PaymentID: req.PaymentID,
 		Status:    req.Status,
 		Message:   "webhook processed",
 	})
+	utils.Respond(w, http.StatusOK, "webhook processed", resource)
 }
 
 // @Summary Refund payment
@@ -113,7 +116,8 @@ func (h *Handler) refund(w http.ResponseWriter, r *http.Request) {
 		writeError(w, pkgErrors.FromError(err))
 		return
 	}
-	writeJSON(w, http.StatusOK, resp)
+	resource := utils.NewResource(resp.ID, "refund", "/api/v1/payments/refund/"+resp.ID, resp)
+	utils.Respond(w, http.StatusOK, "refund created", resource)
 }
 
 // @Summary Get payment
@@ -136,7 +140,8 @@ func (h *Handler) getPayment(w http.ResponseWriter, r *http.Request) {
 		writeError(w, pkgErrors.FromError(err))
 		return
 	}
-	writeJSON(w, http.StatusOK, resp)
+	resource := utils.NewResource(resp.ID, "payment", "/api/v1/payments/"+resp.ID, resp)
+	utils.Respond(w, http.StatusOK, "payment retrieved", resource)
 }
 
 // @Summary Get payment by booking ID
@@ -159,7 +164,8 @@ func (h *Handler) getByBooking(w http.ResponseWriter, r *http.Request) {
 		writeError(w, pkgErrors.FromError(err))
 		return
 	}
-	writeJSON(w, http.StatusOK, resp)
+	resource := utils.NewResource(resp.ID, "payment", "/api/v1/payments/"+resp.ID, resp)
+	utils.Respond(w, http.StatusOK, "payment retrieved", resource)
 }
 
 func writeJSON(w http.ResponseWriter, status int, body any) {
@@ -169,5 +175,5 @@ func writeJSON(w http.ResponseWriter, status int, body any) {
 }
 
 func writeError(w http.ResponseWriter, err pkgErrors.APIError) {
-	writeJSON(w, pkgErrors.StatusCode(err), err)
+	utils.Respond(w, pkgErrors.StatusCode(err), err.Message, err)
 }

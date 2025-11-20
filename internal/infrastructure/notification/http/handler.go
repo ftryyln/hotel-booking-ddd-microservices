@@ -9,16 +9,12 @@ import (
 	notificationuc "github.com/ftryyln/hotel-booking-microservices/internal/usecase/notification"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/dto"
 	pkgErrors "github.com/ftryyln/hotel-booking-microservices/pkg/errors"
+	"github.com/ftryyln/hotel-booking-microservices/pkg/utils"
 )
 
 // Handler exposes notification endpoint.
 type Handler struct {
 	service *notificationuc.Service
-}
-
-type notificationResponse struct {
-	Message string                 `json:"message"`
-	Data    map[string]interface{} `json:"data"`
 }
 
 func NewHandler(service *notificationuc.Service) *Handler {
@@ -52,15 +48,8 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 		writeError(w, pkgErrors.FromError(err))
 		return
 	}
-	writeJSON(w, http.StatusAccepted, notificationResponse{
-		Message: "notification accepted",
-		Data: map[string]interface{}{
-			"id":      record.ID,
-			"message": record.Message,
-			"type":    record.Type,
-			"target":  record.Target,
-		},
-	})
+	resource := utils.NewResource(record.ID, "notification", "/api/v1/notifications/"+record.ID, record)
+	utils.Respond(w, http.StatusAccepted, "notification accepted", resource)
 }
 
 // @Summary List notifications (in-memory)
@@ -70,7 +59,11 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 // @Router /notifications [get]
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 	items := h.service.List(r.Context())
-	writeJSON(w, http.StatusOK, items)
+	var resources []utils.Resource
+	for _, n := range items {
+		resources = append(resources, utils.NewResource(n.ID, "notification", "/api/v1/notifications/"+n.ID, n))
+	}
+	utils.RespondWithCount(w, http.StatusOK, "notifications listed", resources, len(resources))
 }
 
 // @Summary Get notification by ID
@@ -87,15 +80,10 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 		writeError(w, pkgErrors.New("not_found", "notification not found"))
 		return
 	}
-	writeJSON(w, http.StatusOK, notification)
-}
-
-func writeJSON(w http.ResponseWriter, status int, body any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(body)
+	resource := utils.NewResource(notification.ID, "notification", "/api/v1/notifications/"+notification.ID, notification)
+	utils.Respond(w, http.StatusOK, "notification retrieved", resource)
 }
 
 func writeError(w http.ResponseWriter, err pkgErrors.APIError) {
-	writeJSON(w, pkgErrors.StatusCode(err), err)
+	utils.Respond(w, pkgErrors.StatusCode(err), err.Message, err)
 }

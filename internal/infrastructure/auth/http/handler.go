@@ -130,7 +130,11 @@ func (h *Handler) listUsers(w http.ResponseWriter, r *http.Request) {
 		writeError(w, pkgErrors.FromError(err))
 		return
 	}
-	utils.RespondWithCount(w, http.StatusOK, "users listed", resp, len(resp))
+	var resources []utils.Resource
+	for _, u := range resp {
+		resources = append(resources, utils.NewResource(u.ID, "user", "/auth/users/"+u.ID, u))
+	}
+	utils.RespondWithCount(w, http.StatusOK, "users listed", resources, len(resources))
 }
 
 // @Summary Get user detail

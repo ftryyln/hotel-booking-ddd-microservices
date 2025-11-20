@@ -19,11 +19,6 @@ type Handler struct {
 	service *booking.Service
 }
 
-type bookingWithMessage struct {
-	Message string              `json:"message"`
-	Data    dto.BookingResponse `json:"data"`
-}
-
 type bookingCreateInput struct {
 	UserID     string `json:"user_id"`
 	RoomTypeID string `json:"room_type_id"`
@@ -74,7 +69,8 @@ func (h *Handler) createBooking(w http.ResponseWriter, r *http.Request) {
 		writeError(w, pkgErrors.FromError(err))
 		return
 	}
-	writeJSON(w, http.StatusCreated, bookingWithMessage{Message: "booking created", Data: resp})
+	resource := utils.NewResource(resp.ID, "booking", "/api/v1/bookings/"+resp.ID, resp)
+	utils.Respond(w, http.StatusCreated, "booking created", resource)
 }
 
 // @Summary Cancel booking
@@ -101,7 +97,8 @@ func (h *Handler) cancelBooking(w http.ResponseWriter, r *http.Request) {
 		writeError(w, pkgErrors.FromError(err))
 		return
 	}
-	writeJSON(w, http.StatusOK, bookingWithMessage{Message: "booking cancelled", Data: resp})
+	resource := utils.NewResource(resp.ID, "booking", "/api/v1/bookings/"+resp.ID, resp)
+	utils.Respond(w, http.StatusOK, "booking cancelled", resource)
 }
 
 // @Summary Get booking
@@ -124,7 +121,8 @@ func (h *Handler) getBooking(w http.ResponseWriter, r *http.Request) {
 		writeError(w, pkgErrors.FromError(err))
 		return
 	}
-	writeJSON(w, http.StatusOK, bookingWithMessage{Message: "booking retrieved", Data: resp})
+	resource := utils.NewResource(resp.ID, "booking", "/api/v1/bookings/"+resp.ID, resp)
+	utils.Respond(w, http.StatusOK, "booking retrieved", resource)
 }
 
 // @Summary Get booking status
@@ -147,7 +145,7 @@ func (h *Handler) getStatus(w http.ResponseWriter, r *http.Request) {
 		writeError(w, pkgErrors.FromError(err))
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": resp.Status})
+	utils.Respond(w, http.StatusOK, "booking status retrieved", map[string]string{"status": resp.Status})
 }
 
 // @Summary List bookings
@@ -162,7 +160,11 @@ func (h *Handler) listBookings(w http.ResponseWriter, r *http.Request) {
 		writeError(w, pkgErrors.FromError(err))
 		return
 	}
-	utils.RespondWithCount(w, http.StatusOK, "bookings listed", resp, len(resp))
+	var resources []utils.Resource
+	for _, b := range resp {
+		resources = append(resources, utils.NewResource(b.ID, "booking", "/api/v1/bookings/"+b.ID, b))
+	}
+	utils.RespondWithCount(w, http.StatusOK, "bookings listed", resources, len(resources))
 }
 
 // @Summary Booking checkpoint
@@ -195,7 +197,8 @@ func (h *Handler) checkpoint(w http.ResponseWriter, r *http.Request) {
 		writeError(w, pkgErrors.FromError(err))
 		return
 	}
-	writeJSON(w, http.StatusOK, bookingWithMessage{Message: "status updated", Data: resp})
+	resource := utils.NewResource(resp.ID, "booking", "/api/v1/bookings/"+resp.ID, resp)
+	utils.Respond(w, http.StatusOK, "status updated", resource)
 }
 
 // @Summary Update booking status (internal)
@@ -229,17 +232,12 @@ func (h *Handler) updateStatus(w http.ResponseWriter, r *http.Request) {
 		writeError(w, pkgErrors.FromError(err))
 		return
 	}
-	writeJSON(w, http.StatusOK, resp)
-}
-
-func writeJSON(w http.ResponseWriter, status int, body any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(body)
+	resource := utils.NewResource(resp.ID, "booking", "/api/v1/bookings/"+resp.ID, resp)
+	utils.Respond(w, http.StatusOK, "booking status updated", resource)
 }
 
 func writeError(w http.ResponseWriter, err pkgErrors.APIError) {
-	writeJSON(w, pkgErrors.StatusCode(err), err)
+	utils.Respond(w, pkgErrors.StatusCode(err), err.Message, err)
 }
 
 func toBookingRequest(in bookingCreateInput) (dto.BookingRequest, error) {
