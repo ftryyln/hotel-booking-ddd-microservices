@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"net/http"
 	"os/signal"
 	"syscall"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/ftryyln/hotel-booking-microservices/pkg/config"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/database"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/logger"
+	"github.com/ftryyln/hotel-booking-microservices/pkg/middleware"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/server"
 )
 
@@ -40,7 +42,14 @@ func main() {
 	handler := bookinghttp.NewHandler(service)
 
 	r := chi.NewRouter()
-	r.Mount("/", handler.Routes())
+	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	})
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.JWT(cfg.JWTSecret))
+		r.Mount("/", handler.Routes())
+	})
 
 	srv := server.New(cfg.HTTPPort, r, log)
 	srv.Start()

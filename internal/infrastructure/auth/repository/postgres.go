@@ -35,3 +35,9 @@ func (r *PostgresRepository) FindByID(ctx context.Context, id uuid.UUID) (domain
 	err := r.db.GetContext(ctx, &u, `SELECT id, email, password, role, created_at FROM users WHERE id=$1`, id)
 	return u, err
 }
+
+func (r *PostgresRepository) List(ctx context.Context) ([]domain.User, error) {
+	var users []domain.User
+	err := r.db.SelectContext(ctx, &users, `SELECT id, email, password, role, created_at FROM users ORDER BY created_at DESC`)
+	return users, err
+}

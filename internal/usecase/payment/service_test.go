@@ -101,6 +101,15 @@ func (p *paymentRepoStub) FindByID(ctx context.Context, id uuid.UUID) (domain.Pa
 	return pay, nil
 }
 
+func (p *paymentRepoStub) FindByBookingID(ctx context.Context, bookingID uuid.UUID) (domain.Payment, error) {
+	for _, pay := range p.store {
+		if pay.BookingID == bookingID {
+			return pay, nil
+		}
+	}
+	return domain.Payment{}, errors.New("not found")
+}
+
 func (p *paymentRepoStub) UpdateStatus(ctx context.Context, id uuid.UUID, status, paymentURL string) error {
 	if pay, ok := p.store[id]; ok {
 		pay.Status = status

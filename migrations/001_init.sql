@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS bookings (
     check_in DATE NOT NULL,
     check_out DATE NOT NULL,
     status TEXT NOT NULL,
+    guests INT NOT NULL DEFAULT 1,
     total_price NUMERIC NOT NULL,
     total_nights INT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT now()

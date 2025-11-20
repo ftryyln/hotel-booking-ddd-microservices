@@ -2,55 +2,82 @@ routes:
   - name: hotels
     prefix: /api/v1/hotels
     upstream: http://hotel-service:8081
-    strip_prefix: false
+    strip_prefix: true
+    rewrite: /hotels
     require_auth: false
     auth_strategy: forward
+    health_path: /healthz
+  - name: room-types
+    prefix: /api/v1/room-types
+    upstream: http://hotel-service:8081
+    strip_prefix: true
+    rewrite: /room-types
+    require_auth: true
+    auth_strategy: validate
+    health_path: /healthz
+  - name: rooms
+    prefix: /api/v1/rooms
+    upstream: http://hotel-service:8081
+    strip_prefix: true
+    rewrite: /rooms
+    require_auth: true
+    auth_strategy: validate
     health_path: /healthz
   - name: bookings
     prefix: /api/v1/bookings
     upstream: http://booking-service:8082
-    strip_prefix: false
+    strip_prefix: true
+    rewrite: /bookings
     require_auth: true
     auth_strategy: forward
     health_path: /healthz
   - name: auth
     prefix: /api/v1/auth
     upstream: http://auth-service:8080
-    strip_prefix: false
+    strip_prefix: true
+    rewrite: /auth
     require_auth: false
     auth_strategy: forward
     health_path: /healthz
   - name: payments
     prefix: /api/v1/payments
     upstream: http://payment-service:8083
-    strip_prefix: false
+    strip_prefix: true
+    rewrite: /payments
     require_auth: true
     auth_strategy: validate
     health_path: /healthz
   - name: notifications
     prefix: /api/v1/notifications
     upstream: http://notification-service:8085
-    strip_prefix: false
+    strip_prefix: true
+    rewrite: /notifications
     require_auth: false
     auth_strategy: forward
     health_path: /healthz
 fallback:
   base_path: /api/v1
-  strip_base: false
+  strip_base: true
   health_path: /healthz
   mapping:
     hotels:
       upstream: http://hotel-service:8081
-      strip_prefix: false
+      strip_prefix: true
+    room-types:
+      upstream: http://hotel-service:8081
+      strip_prefix: true
+    rooms:
+      upstream: http://hotel-service:8081
+      strip_prefix: true
     bookings:
       upstream: http://booking-service:8082
-      strip_prefix: false
+      strip_prefix: true
     auth:
       upstream: http://auth-service:8080
-      strip_prefix: false
+      strip_prefix: true
     payments:
       upstream: http://payment-service:8083
-      strip_prefix: false
+      strip_prefix: true
     notifications:
       upstream: http://notification-service:8085
-      strip_prefix: false
+      strip_prefix: true

@@ -95,10 +95,38 @@ func (s *Service) Me(ctx context.Context, id uuid.UUID) (dto.ProfileResponse, er
 	return dto.ProfileResponse{ID: user.ID.String(), Email: user.Email, Role: user.Role}, nil
 }
 
+// List returns all users (admin use).
+func (s *Service) List(ctx context.Context) ([]dto.ProfileResponse, error) {
+	users, err := s.repo.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var resp []dto.ProfileResponse
+	for _, u := range users {
+		resp = append(resp, dto.ProfileResponse{ID: u.ID.String(), Email: u.Email, Role: u.Role})
+	}
+	return resp, nil
+}
+
+// Get fetches a user by id.
+func (s *Service) Get(ctx context.Context, id uuid.UUID) (dto.ProfileResponse, error) {
+	user, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return dto.ProfileResponse{}, errors.New("not_found", "user not found")
+	}
+	return dto.ProfileResponse{ID: user.ID.String(), Email: user.Email, Role: user.Role}, nil
+}
+
 func (s *Service) issueTokens(ctx context.Context, user domain.User) (dto.AuthResponse, error) {
 	access, refresh, err := s.issuer.Generate(ctx, user)
 	if err != nil {
 		return dto.AuthResponse{}, err
 	}
-	return dto.AuthResponse{AccessToken: access, RefreshToken: refresh}, nil
+	return dto.AuthResponse{
+		ID:           user.ID.String(),
+		Email:        user.Email,
+		Role:         user.Role,
+		AccessToken:  access,
+		RefreshToken: refresh,
+	}, nil
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"net/http"
 	"os/signal"
 	"syscall"
 
@@ -33,9 +34,13 @@ func main() {
 	repo := authrepo.NewPostgresRepository(db)
 	issuer := authtoken.NewJWTIssuer(cfg.JWTSecret)
 	service := authuc.NewService(repo, issuer)
-	handler := authhttp.NewHandler(service)
+	handler := authhttp.NewHandler(service, cfg.JWTSecret)
 
 	r := chi.NewRouter()
+	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	})
 	r.Mount("/auth", handler.Routes())
 
 	srv := server.New(cfg.HTTPPort, r, log)

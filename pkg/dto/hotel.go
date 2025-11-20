@@ -1,5 +1,7 @@
 package dto
 
+import "time"
+
 // HotelRequest defines admin input.
 type HotelRequest struct {
 	Name        string `json:"name"`
@@ -16,8 +18,26 @@ type RoomTypeRequest struct {
 	Amenities string  `json:"amenities"`
 }
 
+// RoomTypeResponse exposes room type details.
+type RoomTypeResponse struct {
+	ID        string  `json:"id"`
+	HotelID   string  `json:"hotel_id"`
+	Name      string  `json:"name"`
+	Capacity  int     `json:"capacity"`
+	BasePrice float64 `json:"base_price"`
+	Amenities string  `json:"amenities"`
+}
+
 // RoomRequest describes a physical room.
 type RoomRequest struct {
+	RoomTypeID string `json:"room_type_id"`
+	Number     string `json:"number"`
+	Status     string `json:"status"`
+}
+
+// RoomResponse shows room detail.
+type RoomResponse struct {
+	ID         string `json:"id"`
 	RoomTypeID string `json:"room_type_id"`
 	Number     string `json:"number"`
 	Status     string `json:"status"`
@@ -29,6 +49,7 @@ type HotelResponse struct {
 	Name        string            `json:"name"`
 	Description string            `json:"description"`
 	Address     string            `json:"address"`
+	CreatedAt   time.Time         `json:"created_at"`
 	RoomTypes   []RoomTypeSummary `json:"room_types"`
 }
 

@@ -184,6 +184,42 @@ definitions:
       price:
         type: number
     type: object
+  internal_infrastructure_gateway.DebugRouteResponse:
+    properties:
+      auth_strategy:
+        type: string
+      name:
+        type: string
+      prefix:
+        type: string
+      require_auth:
+        type: boolean
+      status:
+        $ref: '#/definitions/internal_infrastructure_gateway.UpstreamStatusDoc'
+      upstream:
+        type: string
+    type: object
+  internal_infrastructure_gateway.UpstreamStatusDoc:
+    properties:
+      circuit_open_until:
+        type: string
+      consecutive_errors:
+        type: integer
+      failures_in_window:
+        type: integer
+      healthy:
+        type: boolean
+      last_checked:
+        type: string
+      last_error:
+        type: string
+      requests_in_window:
+        type: integer
+      unhealthy_since:
+        type: string
+      window_started_at:
+        type: string
+    type: object
 host: localhost:8088
 info:
   contact: {}
@@ -433,6 +469,20 @@ paths:
       summary: Update booking status (internal)
       tags:
       - Bookings
+  /debug/routes:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_infrastructure_gateway.DebugRouteResponse'
+            type: array
+      summary: List active proxy routes and upstream health
+      tags:
+      - Diagnostics
   /gateway/aggregate/bookings/{id}:
     get:
       parameters:
@@ -503,6 +553,18 @@ paths:
       summary: Create hotel
       tags:
       - Hotels
+  /metrics:
+    get:
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: prometheus metrics
+          schema:
+            type: string
+      summary: Gateway Prometheus metrics
+      tags:
+      - Diagnostics
   /notifications:
     post:
       consumes:

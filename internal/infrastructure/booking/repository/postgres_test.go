@@ -35,7 +35,7 @@ func TestPostgresRepositoryCreate(t *testing.T) {
 	}
 
 	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO bookings")).
-		WithArgs(booking.ID, booking.UserID, booking.RoomTypeID, booking.CheckIn, booking.CheckOut, booking.Status, booking.TotalPrice, booking.TotalNights).
+		WithArgs(booking.ID, booking.UserID, booking.RoomTypeID, booking.CheckIn, booking.CheckOut, booking.Status, booking.Guests, booking.TotalPrice, booking.TotalNights).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	require.NoError(t, repository.Create(context.Background(), booking))

@@ -13,8 +13,11 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
-// AuthResponse returns JWT tokens.
+// AuthResponse returns JWT tokens plus user info.
 type AuthResponse struct {
+	ID           string `json:"id"`
+	Email        string `json:"email"`
+	Role         string `json:"role"`
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 }

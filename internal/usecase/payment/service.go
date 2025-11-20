@@ -2,12 +2,15 @@ package payment
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 
 	domain "github.com/ftryyln/hotel-booking-microservices/internal/domain/payment"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/dto"
-	"github.com/ftryyln/hotel-booking-microservices/pkg/errors"
+	pkgErrors "github.com/ftryyln/hotel-booking-microservices/pkg/errors"
 )
 
 // Service orchestrates payments.
@@ -24,7 +27,11 @@ func NewService(repo domain.Repository, provider domain.Provider, updater domain
 func (s *Service) Initiate(ctx context.Context, req dto.PaymentRequest) (dto.PaymentResponse, error) {
 	bookingID, err := uuid.Parse(req.BookingID)
 	if err != nil {
-		return dto.PaymentResponse{}, errors.New("bad_request", "invalid booking id")
+		return dto.PaymentResponse{}, pkgErrors.New("bad_request", "invalid booking id")
+	}
+
+	if existing, err := s.repo.FindByBookingID(ctx, bookingID); err == nil {
+		return toDTO(existing), pkgErrors.New("conflict", "payment already exists for booking")
 	}
 
 	payment := domain.Payment{
@@ -41,6 +48,12 @@ func (s *Service) Initiate(ctx context.Context, req dto.PaymentRequest) (dto.Pay
 		return dto.PaymentResponse{}, err
 	}
 	if err := s.repo.Create(ctx, initiated); err != nil {
+		if isUniqueViolation(err) {
+			if existing, errLookup := s.repo.FindByBookingID(ctx, bookingID); errLookup == nil {
+				return toDTO(existing), pkgErrors.New("conflict", "payment already exists for booking")
+			}
+			return dto.PaymentResponse{}, pkgErrors.New("conflict", "payment already exists for booking")
+		}
 		return dto.PaymentResponse{}, err
 	}
 
@@ -50,16 +63,17 @@ func (s *Service) Initiate(ctx context.Context, req dto.PaymentRequest) (dto.Pay
 func (s *Service) HandleWebhook(ctx context.Context, req dto.WebhookRequest, payload string) error {
 	paymentID, err := uuid.Parse(req.PaymentID)
 	if err != nil {
-		return errors.New("bad_request", "invalid payment id")
+		return pkgErrors.New("bad_request", "invalid payment id")
 	}
 
 	payment, err := s.repo.FindByID(ctx, paymentID)
 	if err != nil {
-		return errors.New("not_found", "payment not found")
+		return pkgErrors.New("not_found", "payment not found")
 	}
 
-	if !s.provider.VerifySignature(ctx, payload, req.Signature) {
-		return errors.New("forbidden", "invalid signature")
+	canonical := fmt.Sprintf("{\"payment_id\":\"%s\",\"status\":\"%s\"}", req.PaymentID, req.Status)
+	if !s.provider.VerifySignature(ctx, canonical, req.Signature) {
+		return pkgErrors.New("forbidden", "invalid signature")
 	}
 
 	if err := s.repo.UpdateStatus(ctx, payment.ID, req.Status, payment.PaymentURL); err != nil {
@@ -85,7 +99,7 @@ func (s *Service) HandleWebhook(ctx context.Context, req dto.WebhookRequest, pay
 func (s *Service) Refund(ctx context.Context, req dto.RefundRequest) (dto.RefundResponse, error) {
 	paymentID, err := uuid.Parse(req.PaymentID)
 	if err != nil {
-		return dto.RefundResponse{}, errors.New("bad_request", "invalid payment id")
+		return dto.RefundResponse{}, pkgErrors.New("bad_request", "invalid payment id")
 	}
 
 	payment, err := s.repo.FindByID(ctx, paymentID)
@@ -109,6 +123,15 @@ func (s *Service) GetPayment(ctx context.Context, id uuid.UUID) (dto.PaymentResp
 	return toDTO(p), nil
 }
 
+// GetByBooking returns payment for a given booking.
+func (s *Service) GetByBooking(ctx context.Context, bookingID uuid.UUID) (dto.PaymentResponse, error) {
+	p, err := s.repo.FindByBookingID(ctx, bookingID)
+	if err != nil {
+		return dto.PaymentResponse{}, err
+	}
+	return toDTO(p), nil
+}
+
 func toDTO(p domain.Payment) dto.PaymentResponse {
 	return dto.PaymentResponse{
 		ID:         p.ID.String(),
@@ -116,4 +139,12 @@ func toDTO(p domain.Payment) dto.PaymentResponse {
 		Provider:   p.Provider,
 		PaymentURL: p.PaymentURL,
 	}
+}
+
+func isUniqueViolation(err error) bool {
+	var pqErr *pq.Error
+	if errors.As(err, &pqErr) {
+		return pqErr.Code == "23505"
+	}
+	return false
 }

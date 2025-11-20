@@ -40,6 +40,12 @@ func (r *PostgresRepository) ListRoomTypes(ctx context.Context, hotelID uuid.UUI
 	return rts, err
 }
 
+func (r *PostgresRepository) ListAllRoomTypes(ctx context.Context) ([]domain.RoomType, error) {
+	var rts []domain.RoomType
+	err := r.db.SelectContext(ctx, &rts, `SELECT id, hotel_id, name, capacity, base_price, amenities FROM room_types`)
+	return rts, err
+}
+
 func (r *PostgresRepository) CreateRoom(ctx context.Context, room domain.Room) error {
 	_, err := r.db.ExecContext(ctx, `INSERT INTO rooms (id, room_type_id, number, status) VALUES ($1,$2,$3,$4)`, room.ID, room.RoomTypeID, room.Number, room.Status)
 	return err
@@ -49,4 +55,16 @@ func (r *PostgresRepository) GetRoomType(ctx context.Context, id uuid.UUID) (dom
 	var rt domain.RoomType
 	err := r.db.GetContext(ctx, &rt, `SELECT id, hotel_id, name, capacity, base_price, amenities FROM room_types WHERE id=$1`, id)
 	return rt, err
+}
+
+func (r *PostgresRepository) ListRooms(ctx context.Context) ([]domain.Room, error) {
+	var rooms []domain.Room
+	err := r.db.SelectContext(ctx, &rooms, `SELECT id, room_type_id, number, status FROM rooms`)
+	return rooms, err
+}
+
+func (r *PostgresRepository) GetHotel(ctx context.Context, id uuid.UUID) (domain.Hotel, error) {
+	var h domain.Hotel
+	err := r.db.GetContext(ctx, &h, `SELECT id, name, description, address, created_at FROM hotels WHERE id=$1`, id)
+	return h, err
 }

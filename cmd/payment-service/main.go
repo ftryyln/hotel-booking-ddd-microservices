@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"net/http"
 	"os/signal"
 	"syscall"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/ftryyln/hotel-booking-microservices/pkg/config"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/database"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/logger"
+	"github.com/ftryyln/hotel-booking-microservices/pkg/middleware"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/server"
 )
 
@@ -37,8 +39,21 @@ func main() {
 	service := paymentuc.NewService(repo, provider, statusClient)
 	handler := paymenthttp.NewHandler(service)
 
+	api := chi.NewRouter()
+	api.Use(middleware.JWT(cfg.JWTSecret))
+	api.Post("/payments", handler.CreatePayment)
+	api.Get("/payments/{id}", handler.GetPayment)
+	api.Get("/payments/by-booking/{booking_id}", handler.GetByBooking)
+	api.Post("/payments/refund", handler.Refund)
+
 	r := chi.NewRouter()
-	r.Mount("/", handler.Routes())
+	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	})
+	// Authenticated payment routes; webhook remains public for provider callbacks.
+	r.Mount("/", api)
+	r.Post("/payments/webhook", handler.HandleWebhook)
 
 	srv := server.New(cfg.HTTPPort, r, log)
 	srv.Start()

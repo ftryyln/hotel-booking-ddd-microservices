@@ -396,6 +396,28 @@ const docTemplate = `{
                 }
             }
         },
+        "/debug/routes": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Diagnostics"
+                ],
+                "summary": "List active proxy routes and upstream health",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/internal_infrastructure_gateway.DebugRouteResponse"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/gateway/aggregate/bookings/{id}": {
             "get": {
                 "security": [
@@ -503,6 +525,25 @@ const docTemplate = `{
                         "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/metrics": {
+            "get": {
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "Diagnostics"
+                ],
+                "summary": "Gateway Prometheus metrics",
+                "responses": {
+                    "200": {
+                        "description": "prometheus metrics",
+                        "schema": {
+                            "type": "string"
                         }
                     }
                 }
@@ -1092,6 +1133,61 @@ const docTemplate = `{
                 },
                 "price": {
                     "type": "number"
+                }
+            }
+        },
+        "internal_infrastructure_gateway.DebugRouteResponse": {
+            "type": "object",
+            "properties": {
+                "auth_strategy": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "prefix": {
+                    "type": "string"
+                },
+                "require_auth": {
+                    "type": "boolean"
+                },
+                "status": {
+                    "$ref": "#/definitions/internal_infrastructure_gateway.UpstreamStatusDoc"
+                },
+                "upstream": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_infrastructure_gateway.UpstreamStatusDoc": {
+            "type": "object",
+            "properties": {
+                "circuit_open_until": {
+                    "type": "string"
+                },
+                "consecutive_errors": {
+                    "type": "integer"
+                },
+                "failures_in_window": {
+                    "type": "integer"
+                },
+                "healthy": {
+                    "type": "boolean"
+                },
+                "last_checked": {
+                    "type": "string"
+                },
+                "last_error": {
+                    "type": "string"
+                },
+                "requests_in_window": {
+                    "type": "integer"
+                },
+                "unhealthy_since": {
+                    "type": "string"
+                },
+                "window_started_at": {
+                    "type": "string"
                 }
             }
         }

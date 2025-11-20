@@ -3,6 +3,7 @@ package bookinghttp
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -10,11 +11,25 @@ import (
 	"github.com/ftryyln/hotel-booking-microservices/internal/usecase/booking"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/dto"
 	pkgErrors "github.com/ftryyln/hotel-booking-microservices/pkg/errors"
+	"github.com/ftryyln/hotel-booking-microservices/pkg/utils"
 )
 
 // Handler exposes booking endpoints.
 type Handler struct {
 	service *booking.Service
+}
+
+type bookingWithMessage struct {
+	Message string              `json:"message"`
+	Data    dto.BookingResponse `json:"data"`
+}
+
+type bookingCreateInput struct {
+	UserID     string `json:"user_id"`
+	RoomTypeID string `json:"room_type_id"`
+	CheckIn    string `json:"check_in"`
+	CheckOut   string `json:"check_out"`
+	Guests     int    `json:"guests,omitempty"`
 }
 
 func NewHandler(service *booking.Service) *Handler {
@@ -23,8 +38,10 @@ func NewHandler(service *booking.Service) *Handler {
 
 func (h *Handler) Routes() http.Handler {
 	r := chi.NewRouter()
+	r.Get("/bookings", h.listBookings)
 	r.Post("/bookings", h.createBooking)
 	r.Get("/bookings/{id}", h.getBooking)
+	r.Get("/bookings/{id}/status", h.getStatus)
 	r.Post("/bookings/{id}/cancel", h.cancelBooking)
 	r.Post("/bookings/{id}/status", h.updateStatus)
 	r.Post("/bookings/{id}/checkpoint", h.checkpoint)
@@ -35,30 +52,36 @@ func (h *Handler) Routes() http.Handler {
 // @Tags Bookings
 // @Accept json
 // @Produce json
-// @Param request body dto.BookingRequest true "Booking payload"
+// @Param request body bookingCreateInput true "Booking payload"
 // @Success 201 {object} dto.BookingResponse
 // @Failure 400 {object} dto.ErrorResponse
 // @Security BearerAuth
 // @Router /bookings [post]
 func (h *Handler) createBooking(w http.ResponseWriter, r *http.Request) {
-	var req dto.BookingRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	var input bookingCreateInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		writeError(w, pkgErrors.New("bad_request", "invalid payload"))
 		return
 	}
+	req, err := toBookingRequest(input)
+	if err != nil {
+		writeError(w, pkgErrors.FromError(err))
+		return
+	}
+
 	resp, err := h.service.CreateBooking(r.Context(), req)
 	if err != nil {
 		writeError(w, pkgErrors.FromError(err))
 		return
 	}
-	writeJSON(w, http.StatusCreated, resp)
+	writeJSON(w, http.StatusCreated, bookingWithMessage{Message: "booking created", Data: resp})
 }
 
 // @Summary Cancel booking
 // @Tags Bookings
 // @Produce json
 // @Param id path string true "Booking ID"
-// @Success 200 {object} map[string]string
+// @Success 200 {object} dto.BookingResponse
 // @Failure 400 {object} dto.ErrorResponse
 // @Failure 404 {object} dto.ErrorResponse
 // @Security BearerAuth
@@ -73,7 +96,12 @@ func (h *Handler) cancelBooking(w http.ResponseWriter, r *http.Request) {
 		writeError(w, pkgErrors.FromError(err))
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "cancelled"})
+	resp, err := h.service.GetBooking(r.Context(), bookingID)
+	if err != nil {
+		writeError(w, pkgErrors.FromError(err))
+		return
+	}
+	writeJSON(w, http.StatusOK, bookingWithMessage{Message: "booking cancelled", Data: resp})
 }
 
 // @Summary Get booking
@@ -96,7 +124,45 @@ func (h *Handler) getBooking(w http.ResponseWriter, r *http.Request) {
 		writeError(w, pkgErrors.FromError(err))
 		return
 	}
-	writeJSON(w, http.StatusOK, resp)
+	writeJSON(w, http.StatusOK, bookingWithMessage{Message: "booking retrieved", Data: resp})
+}
+
+// @Summary Get booking status
+// @Tags Bookings
+// @Produce json
+// @Param id path string true "Booking ID"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Security BearerAuth
+// @Router /bookings/{id}/status [get]
+func (h *Handler) getStatus(w http.ResponseWriter, r *http.Request) {
+	bookingID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		writeError(w, pkgErrors.New("bad_request", "invalid id"))
+		return
+	}
+	resp, err := h.service.GetBooking(r.Context(), bookingID)
+	if err != nil {
+		writeError(w, pkgErrors.FromError(err))
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": resp.Status})
+}
+
+// @Summary List bookings
+// @Tags Bookings
+// @Produce json
+// @Success 200 {array} dto.BookingResponse
+// @Security BearerAuth
+// @Router /bookings [get]
+func (h *Handler) listBookings(w http.ResponseWriter, r *http.Request) {
+	resp, err := h.service.ListBookings(r.Context())
+	if err != nil {
+		writeError(w, pkgErrors.FromError(err))
+		return
+	}
+	utils.RespondWithCount(w, http.StatusOK, "bookings listed", resp, len(resp))
 }
 
 // @Summary Booking checkpoint
@@ -105,7 +171,7 @@ func (h *Handler) getBooking(w http.ResponseWriter, r *http.Request) {
 // @Produce json
 // @Param id path string true "Booking ID"
 // @Param request body dto.CheckpointRequest true "Checkpoint payload"
-// @Success 200 {object} map[string]string
+// @Success 200 {object} dto.BookingResponse
 // @Failure 400 {object} dto.ErrorResponse
 // @Security BearerAuth
 // @Router /bookings/{id}/checkpoint [post]
@@ -124,7 +190,12 @@ func (h *Handler) checkpoint(w http.ResponseWriter, r *http.Request) {
 		writeError(w, pkgErrors.FromError(err))
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": req.Action})
+	resp, err := h.service.GetBooking(r.Context(), bookingID)
+	if err != nil {
+		writeError(w, pkgErrors.FromError(err))
+		return
+	}
+	writeJSON(w, http.StatusOK, bookingWithMessage{Message: "status updated", Data: resp})
 }
 
 // @Summary Update booking status (internal)
@@ -133,7 +204,7 @@ func (h *Handler) checkpoint(w http.ResponseWriter, r *http.Request) {
 // @Produce json
 // @Param id path string true "Booking ID"
 // @Param request body map[string]string true "Status payload"
-// @Success 200 {object} map[string]string
+// @Success 200 {object} dto.BookingResponse
 // @Failure 400 {object} dto.ErrorResponse
 // @Router /bookings/{id}/status [post]
 func (h *Handler) updateStatus(w http.ResponseWriter, r *http.Request) {
@@ -153,7 +224,12 @@ func (h *Handler) updateStatus(w http.ResponseWriter, r *http.Request) {
 		writeError(w, pkgErrors.FromError(err))
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": payload.Status})
+	resp, err := h.service.GetBooking(r.Context(), bookingID)
+	if err != nil {
+		writeError(w, pkgErrors.FromError(err))
+		return
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func writeJSON(w http.ResponseWriter, status int, body any) {
@@ -164,4 +240,32 @@ func writeJSON(w http.ResponseWriter, status int, body any) {
 
 func writeError(w http.ResponseWriter, err pkgErrors.APIError) {
 	writeJSON(w, pkgErrors.StatusCode(err), err)
+}
+
+func toBookingRequest(in bookingCreateInput) (dto.BookingRequest, error) {
+	checkIn, err := parseDate(in.CheckIn)
+	if err != nil {
+		return dto.BookingRequest{}, pkgErrors.New("bad_request", "invalid check_in")
+	}
+	checkOut, err := parseDate(in.CheckOut)
+	if err != nil {
+		return dto.BookingRequest{}, pkgErrors.New("bad_request", "invalid check_out")
+	}
+	return dto.BookingRequest{
+		UserID:     in.UserID,
+		RoomTypeID: in.RoomTypeID,
+		CheckIn:    checkIn,
+		CheckOut:   checkOut,
+		Guests:     in.Guests,
+	}, nil
+}
+
+func parseDate(value string) (time.Time, error) {
+	if value == "" {
+		return time.Time{}, pkgErrors.New("bad_request", "date required")
+	}
+	if t, err := time.Parse(time.RFC3339, value); err == nil {
+		return t, nil
+	}
+	return time.Parse("2006-01-02", value)
 }

@@ -10,15 +10,18 @@ import (
 	uc "github.com/ftryyln/hotel-booking-microservices/internal/usecase/auth"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/dto"
 	pkgErrors "github.com/ftryyln/hotel-booking-microservices/pkg/errors"
+	"github.com/ftryyln/hotel-booking-microservices/pkg/middleware"
+	"github.com/ftryyln/hotel-booking-microservices/pkg/utils"
 )
 
 // Handler wires HTTP routes to auth service.
 type Handler struct {
-	service *uc.Service
+	service   *uc.Service
+	jwtSecret string
 }
 
-func NewHandler(service *uc.Service) *Handler {
-	return &Handler{service: service}
+func NewHandler(service *uc.Service, jwtSecret string) *Handler {
+	return &Handler{service: service, jwtSecret: jwtSecret}
 }
 
 func (h *Handler) Routes() http.Handler {
@@ -26,6 +29,11 @@ func (h *Handler) Routes() http.Handler {
 	r.Post("/register", h.register)
 	r.Post("/login", h.login)
 	r.Get("/me/{id}", h.me)
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.JWT(h.jwtSecret))
+		r.Get("/users", h.listUsers)
+		r.Get("/users/{id}", h.getUser)
+	})
 	return r
 }
 
@@ -50,7 +58,8 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 		writeError(w, pkgErrors.FromError(err))
 		return
 	}
-	writeJSON(w, http.StatusCreated, resp)
+	resource := utils.NewResource(resp.ID, "user", "/auth/me/"+resp.ID, resp)
+	utils.Respond(w, http.StatusCreated, "user registered", resource)
 }
 
 // @Summary Login
@@ -74,7 +83,8 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 		writeError(w, pkgErrors.FromError(err))
 		return
 	}
-	writeJSON(w, http.StatusOK, resp)
+	resource := utils.NewResource(resp.ID, "user", "/auth/me/"+resp.ID, resp)
+	utils.Respond(w, http.StatusOK, "login succeeded", resource)
 }
 
 // @Summary Get profile
@@ -99,15 +109,67 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 		writeError(w, pkgErrors.FromError(err))
 		return
 	}
-	writeJSON(w, http.StatusOK, resp)
+	resource := utils.NewResource(resp.ID, "user", "/auth/me/"+resp.ID, resp)
+	utils.Respond(w, http.StatusOK, "profile retrieved", resource)
 }
 
-func writeJSON(w http.ResponseWriter, status int, body any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(body)
+// @Summary List users (admin)
+// @Tags Auth
+// @Produce json
+// @Success 200 {array} dto.ProfileResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Security BearerAuth
+// @Router /auth/users [get]
+func (h *Handler) listUsers(w http.ResponseWriter, r *http.Request) {
+	if !isAdmin(r) {
+		writeError(w, pkgErrors.New("forbidden", "admin only"))
+		return
+	}
+	resp, err := h.service.List(r.Context())
+	if err != nil {
+		writeError(w, pkgErrors.FromError(err))
+		return
+	}
+	utils.RespondWithCount(w, http.StatusOK, "users listed", resp, len(resp))
+}
+
+// @Summary Get user detail
+// @Tags Auth
+// @Produce json
+// @Param id path string true "User ID"
+// @Success 200 {object} dto.ProfileResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Security BearerAuth
+// @Router /auth/users/{id} [get]
+func (h *Handler) getUser(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	userID, err := uuid.Parse(idStr)
+	if err != nil {
+		writeError(w, pkgErrors.New("bad_request", "invalid id"))
+		return
+	}
+	claims, ok := r.Context().Value(middleware.AuthContextKey).(*middleware.Claims)
+	if !ok || (claims.Role != "admin" && claims.UserID != userID.String()) {
+		writeError(w, pkgErrors.New("forbidden", "insufficient role"))
+		return
+	}
+	resp, err := h.service.Get(r.Context(), userID)
+	if err != nil {
+		writeError(w, pkgErrors.FromError(err))
+		return
+	}
+	resource := utils.NewResource(resp.ID, "user", "/auth/users/"+resp.ID, resp)
+	utils.Respond(w, http.StatusOK, "user retrieved", resource)
 }
 
 func writeError(w http.ResponseWriter, err pkgErrors.APIError) {
-	writeJSON(w, pkgErrors.StatusCode(err), err)
+	utils.Respond(w, pkgErrors.StatusCode(err), err.Message, err)
+}
+
+func isAdmin(r *http.Request) bool {
+	if claims, ok := r.Context().Value(middleware.AuthContextKey).(*middleware.Claims); ok {
+		return claims.Role == "admin"
+	}
+	return false
 }

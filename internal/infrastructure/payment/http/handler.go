@@ -18,6 +18,19 @@ type Handler struct {
 	service *payment.Service
 }
 
+// Allow reuse without chi mounting.
+func (h *Handler) CreatePayment(w http.ResponseWriter, r *http.Request) { h.createPayment(w, r) }
+func (h *Handler) GetPayment(w http.ResponseWriter, r *http.Request)    { h.getPayment(w, r) }
+func (h *Handler) HandleWebhook(w http.ResponseWriter, r *http.Request) { h.handleWebhook(w, r) }
+func (h *Handler) Refund(w http.ResponseWriter, r *http.Request)        { h.refund(w, r) }
+func (h *Handler) GetByBooking(w http.ResponseWriter, r *http.Request)  { h.getByBooking(w, r) }
+
+type webhookResponse struct {
+	PaymentID string `json:"payment_id"`
+	Status    string `json:"status"`
+	Message   string `json:"message"`
+}
+
 func NewHandler(service *payment.Service) *Handler {
 	return &Handler{service: service}
 }
@@ -26,6 +39,7 @@ func (h *Handler) Routes() http.Handler {
 	r := chi.NewRouter()
 	r.Post("/payments", h.createPayment)
 	r.Get("/payments/{id}", h.getPayment)
+	r.Get("/payments/by-booking/{booking_id}", h.getByBooking)
 	r.Post("/payments/webhook", h.handleWebhook)
 	r.Post("/payments/refund", h.refund)
 	return r
@@ -58,7 +72,7 @@ func (h *Handler) createPayment(w http.ResponseWriter, r *http.Request) {
 // @Tags Payments
 // @Accept json
 // @Produce json
-// @Success 200 {object} map[string]string
+// @Success 200 {object} webhookResponse
 // @Failure 400 {object} dto.ErrorResponse
 // @Router /payments/webhook [post]
 func (h *Handler) handleWebhook(w http.ResponseWriter, r *http.Request) {
@@ -72,7 +86,11 @@ func (h *Handler) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		writeError(w, pkgErrors.FromError(err))
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "processed"})
+	writeJSON(w, http.StatusOK, webhookResponse{
+		PaymentID: req.PaymentID,
+		Status:    req.Status,
+		Message:   "webhook processed",
+	})
 }
 
 // @Summary Refund payment
@@ -114,6 +132,29 @@ func (h *Handler) getPayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp, err := h.service.GetPayment(r.Context(), paymentID)
+	if err != nil {
+		writeError(w, pkgErrors.FromError(err))
+		return
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// @Summary Get payment by booking ID
+// @Tags Payments
+// @Produce json
+// @Param booking_id path string true "Booking ID"
+// @Success 200 {object} dto.PaymentResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Security BearerAuth
+// @Router /payments/by-booking/{booking_id} [get]
+func (h *Handler) getByBooking(w http.ResponseWriter, r *http.Request) {
+	bookingID, err := uuid.Parse(chi.URLParam(r, "booking_id"))
+	if err != nil {
+		writeError(w, pkgErrors.New("bad_request", "invalid booking id"))
+		return
+	}
+	resp, err := h.service.GetByBooking(r.Context(), bookingID)
 	if err != nil {
 		writeError(w, pkgErrors.FromError(err))
 		return

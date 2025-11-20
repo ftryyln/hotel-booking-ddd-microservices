@@ -15,10 +15,12 @@ type BookingRequest struct {
 type BookingResponse struct {
 	ID          string    `json:"id"`
 	Status      string    `json:"status"`
+	Guests      int       `json:"guests"`
 	TotalNights int       `json:"total_nights"`
 	TotalPrice  float64   `json:"total_price"`
 	CheckIn     time.Time `json:"check_in"`
 	CheckOut    time.Time `json:"check_out"`
+	Payment     *PaymentResponse `json:"payment,omitempty"`
 }
 
 // BookingAggregateResponse merges booking+payment.

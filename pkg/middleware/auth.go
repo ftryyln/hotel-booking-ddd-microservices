@@ -16,6 +16,7 @@ type contextKey string
 
 // AuthContextKey stores claims inside context.
 const AuthContextKey contextKey = "auth_claims"
+const AuthTokenKey contextKey = "auth_token"
 
 // Claims extends JWT with extra info.
 type Claims struct {
@@ -56,6 +57,7 @@ func JWT(secret string, roles ...string) func(http.Handler) http.Handler {
 			}
 
 			ctx := context.WithValue(r.Context(), AuthContextKey, claims)
+			ctx = context.WithValue(ctx, AuthTokenKey, tokenString)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

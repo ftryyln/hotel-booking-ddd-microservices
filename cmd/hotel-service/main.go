@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"net/http"
 	"os/signal"
 	"syscall"
 
@@ -31,9 +32,13 @@ func main() {
 
 	repo := hotelrepo.NewPostgresRepository(db)
 	service := hoteluc.NewService(repo)
-	handler := hotelhttp.NewHandler(service)
+	handler := hotelhttp.NewHandler(service, cfg.JWTSecret)
 
 	r := chi.NewRouter()
+	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	})
 	r.Mount("/", handler.Routes())
 
 	srv := server.New(cfg.HTTPPort, r, log)

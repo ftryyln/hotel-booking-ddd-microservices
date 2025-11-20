@@ -2,11 +2,13 @@ package hotel
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/google/uuid"
 
 	domain "github.com/ftryyln/hotel-booking-microservices/internal/domain/hotel"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/dto"
+	"github.com/ftryyln/hotel-booking-microservices/pkg/errors"
 )
 
 // Service exposes hotel catalog operations.
@@ -45,6 +47,7 @@ func (s *Service) ListHotels(ctx context.Context) ([]dto.HotelResponse, error) {
 			Name:        h.Name,
 			Description: h.Description,
 			Address:     h.Address,
+			CreatedAt:   h.CreatedAt,
 			RoomTypes:   summaries,
 		})
 	}
@@ -66,4 +69,68 @@ func (s *Service) CreateRoomType(ctx context.Context, req dto.RoomTypeRequest) (
 func (s *Service) CreateRoom(ctx context.Context, req dto.RoomRequest) (uuid.UUID, error) {
 	room := domain.Room{ID: uuid.New(), RoomTypeID: uuid.MustParse(req.RoomTypeID), Number: req.Number, Status: req.Status}
 	return room.ID, s.repo.CreateRoom(ctx, room)
+}
+
+func (s *Service) GetHotel(ctx context.Context, id uuid.UUID) (dto.HotelResponse, error) {
+	h, err := s.repo.GetHotel(ctx, id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return dto.HotelResponse{}, errors.New("not_found", "hotel not found")
+		}
+		return dto.HotelResponse{}, err
+	}
+	roomTypes, _ := s.repo.ListRoomTypes(ctx, h.ID)
+	var summaries []dto.RoomTypeSummary
+	for _, rt := range roomTypes {
+		summaries = append(summaries, dto.RoomTypeSummary{
+			ID:       rt.ID.String(),
+			Name:     rt.Name,
+			Capacity: rt.Capacity,
+			Price:    rt.BasePrice,
+		})
+	}
+	return dto.HotelResponse{
+		ID:          h.ID.String(),
+		Name:        h.Name,
+		Description: h.Description,
+		Address:     h.Address,
+		CreatedAt:   h.CreatedAt,
+		RoomTypes:   summaries,
+	}, nil
+}
+
+func (s *Service) ListRoomTypes(ctx context.Context) ([]dto.RoomTypeResponse, error) {
+	rts, err := s.repo.ListAllRoomTypes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var resp []dto.RoomTypeResponse
+	for _, rt := range rts {
+		resp = append(resp, dto.RoomTypeResponse{
+			ID:        rt.ID.String(),
+			HotelID:   rt.HotelID.String(),
+			Name:      rt.Name,
+			Capacity:  rt.Capacity,
+			BasePrice: rt.BasePrice,
+			Amenities: rt.Amenities,
+		})
+	}
+	return resp, nil
+}
+
+func (s *Service) ListRooms(ctx context.Context) ([]dto.RoomResponse, error) {
+	rooms, err := s.repo.ListRooms(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var resp []dto.RoomResponse
+	for _, r := range rooms {
+		resp = append(resp, dto.RoomResponse{
+			ID:         r.ID.String(),
+			RoomTypeID: r.RoomTypeID.String(),
+			Number:     r.Number,
+			Status:     r.Status,
+		})
+	}
+	return resp, nil
 }

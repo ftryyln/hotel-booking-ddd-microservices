@@ -7,6 +7,7 @@ RUN go mod download
 
 COPY . .
 
+ENV GODEBUG=ecdh=generic
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -o /bin/booking ./cmd/booking-service
 
 FROM alpine:3.19

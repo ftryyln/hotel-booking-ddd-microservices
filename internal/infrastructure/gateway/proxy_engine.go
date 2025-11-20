@@ -670,6 +670,12 @@ func writeProxyError(w http.ResponseWriter, err pkgErrors.APIError) {
 	_ = json.NewEncoder(w).Encode(err)
 }
 
+// Metrics
+// @Summary Gateway Prometheus metrics
+// @Tags Diagnostics
+// @Produce plain
+// @Success 200 {string} string "prometheus metrics"
+// @Router /metrics [get]
 func (p *proxyEngine) Metrics(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; version=0.0.4")
 	for _, line := range p.metrics.Format() {
@@ -678,24 +684,15 @@ func (p *proxyEngine) Metrics(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (p *proxyEngine) DebugRoutes(w http.ResponseWriter, _ *http.Request) {
-	type debugRoute struct {
-		Name        string         `json:"name"`
-		Prefix      string         `json:"prefix"`
-		Upstream    string         `json:"upstream"`
-		RequireAuth bool           `json:"require_auth"`
-		Auth        string         `json:"auth_strategy"`
-		Status      upstreamStatus `json:"status"`
-	}
-
-	var payload []debugRoute
+	var payload []DebugRouteResponse
 	for _, route := range p.routes {
-		payload = append(payload, debugRoute{
+		payload = append(payload, DebugRouteResponse{
 			Name:        route.name,
 			Prefix:      route.prefix,
 			Upstream:    route.target.url.String(),
 			RequireAuth: route.requireAuth,
 			Auth:        route.authStrategy,
-			Status:      route.target.snapshot(),
+			Status:      statusDocFrom(route.target.snapshot()),
 		})
 	}
 
@@ -703,21 +700,23 @@ func (p *proxyEngine) DebugRoutes(w http.ResponseWriter, _ *http.Request) {
 	_ = json.NewEncoder(w).Encode(payload)
 }
 
+// DebugRoutes
+// @Summary List active proxy routes and upstream health
+// @Tags Diagnostics
+// @Produce json
+// @Success 200 {array} gateway.DebugRouteResponse
+// @Router /debug/routes [get]
 func (p *proxyEngine) Healthz(w http.ResponseWriter, _ *http.Request) {
-	type health struct {
-		Upstream string         `json:"upstream"`
-		Status   upstreamStatus `json:"status"`
-	}
-	payload := make([]health, 0, len(p.upstreams))
+	payload := make([]HealthResponse, 0, len(p.upstreams))
 	healthy := true
 	for _, up := range p.upstreams {
 		state := up.snapshot()
 		if !state.Healthy {
 			healthy = false
 		}
-		payload = append(payload, health{
+		payload = append(payload, HealthResponse{
 			Upstream: up.url.String(),
-			Status:   state,
+			Status:   statusDocFrom(state),
 		})
 	}
 	status := http.StatusOK
@@ -729,6 +728,13 @@ func (p *proxyEngine) Healthz(w http.ResponseWriter, _ *http.Request) {
 	_ = json.NewEncoder(w).Encode(payload)
 }
 
+// Healthz
+// @Summary Aggregated upstream health
+// @Tags Diagnostics
+// @Produce json
+// @Success 200 {array} gateway.HealthResponse
+// @Failure 503 {array} gateway.HealthResponse
+// @Router /healthz [get]
 type proxyResponseWriter struct {
 	http.ResponseWriter
 	status int
