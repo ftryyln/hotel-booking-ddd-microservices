@@ -54,7 +54,7 @@ func FromRequest(req dto.BookingRequest) (CreateCommand, error) {
 	if req.CheckIn.IsZero() || req.CheckOut.IsZero() {
 		return CreateCommand{}, pkgErrors.New("bad_request", "date required")
 	}
-	if !req.CheckIn.Before(req.CheckOut) {
+	if !req.CheckIn.Time.Before(req.CheckOut.Time) {
 		return CreateCommand{}, pkgErrors.New("bad_request", "check_in must be before check_out")
 	}
 	guests := req.Guests
@@ -64,8 +64,8 @@ func FromRequest(req dto.BookingRequest) (CreateCommand, error) {
 	return CreateCommand{
 		UserID:     userID,
 		RoomTypeID: roomTypeID,
-		CheckIn:    req.CheckIn,
-		CheckOut:   req.CheckOut,
+		CheckIn:    req.CheckIn.Time,
+		CheckOut:   req.CheckOut.Time,
 		Guests:     guests,
 	}, nil
 }

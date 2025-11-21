@@ -36,8 +36,8 @@ func TestCreateBooking(t *testing.T) {
 			req: dto.BookingRequest{
 				UserID:     uuid.New().String(),
 				RoomTypeID: roomTypeID.String(),
-				CheckIn:    time.Now().Add(24 * time.Hour),
-				CheckOut:   time.Now().Add(48 * time.Hour),
+				CheckIn:    dto.Date{Time: time.Now().Add(24 * time.Hour)},
+				CheckOut:   dto.Date{Time: time.Now().Add(48 * time.Hour)},
 			},
 		},
 		{
@@ -45,8 +45,8 @@ func TestCreateBooking(t *testing.T) {
 			req: dto.BookingRequest{
 				UserID:     uuid.New().String(),
 				RoomTypeID: roomTypeID.String(),
-				CheckIn:    time.Now().Add(48 * time.Hour),
-				CheckOut:   time.Now().Add(24 * time.Hour),
+				CheckIn:    dto.Date{Time: time.Now().Add(48 * time.Hour)},
+				CheckOut:   dto.Date{Time: time.Now().Add(24 * time.Hour)},
 			},
 			wantErr: true,
 		},
@@ -55,8 +55,8 @@ func TestCreateBooking(t *testing.T) {
 			req: dto.BookingRequest{
 				UserID:     uuid.New().String(),
 				RoomTypeID: uuid.New().String(),
-				CheckIn:    time.Now().Add(24 * time.Hour),
-				CheckOut:   time.Now().Add(48 * time.Hour),
+				CheckIn:    dto.Date{Time: time.Now().Add(24 * time.Hour)},
+				CheckOut:   dto.Date{Time: time.Now().Add(48 * time.Hour)},
 			},
 			wantErr: true,
 		},

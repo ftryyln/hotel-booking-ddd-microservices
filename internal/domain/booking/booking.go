@@ -48,8 +48,11 @@ func (b *Booking) Confirm() error {
 
 // Cancel transitions booking to cancelled state.
 func (b *Booking) Cancel(reason string) error {
-	if b.Status == StatusCompleted {
-		return pkgErrors.New("bad_request", "cannot cancel completed booking")
+	if b.Status == StatusConfirmed || b.Status == StatusCheckedIn || b.Status == StatusCompleted {
+		return pkgErrors.New("bad_request", "cannot cancel booking after confirmation")
+	}
+	if b.Status == StatusCancelled {
+		return pkgErrors.New("bad_request", "booking already cancelled")
 	}
 	b.Status = StatusCancelled
 	b.RecordEvent(NewBookingCancelled(b.ID, reason))
@@ -65,7 +68,6 @@ func (b *Booking) GuestCheckIn() error {
 	b.RecordEvent(NewBookingCheckedIn(b.ID))
 	return nil
 }
-
 
 // Complete transitions booking to completed state.
 func (b *Booking) Complete() error {
@@ -90,7 +92,6 @@ func (b *Booking) ClearEvents() {
 func (b *Booking) RecordEvent(event domain.DomainEvent) {
 	b.events = append(b.events, event)
 }
-
 
 // BookingReader handles queries (CQRS Read Side).
 type BookingReader interface {

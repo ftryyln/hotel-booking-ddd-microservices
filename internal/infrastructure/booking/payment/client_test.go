@@ -13,7 +13,7 @@ import (
 func TestHTTPGatewayInitiateSuccess(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"id":"` + uuid.New().String() + `","status":"pending","provider":"mock","payment_url":"http://pay"}`))
+		w.Write([]byte(`{"data":{"id":"` + uuid.New().String() + `","type":"payment","attributes":{"id":"` + uuid.New().String() + `","status":"pending","provider":"mock","payment_url":"http://pay"}},"meta":{"message":"ok","requestId":"test"}}`))
 	}))
 	defer srv.Close()
 
@@ -36,7 +36,7 @@ func TestHTTPGatewayInitiateError(t *testing.T) {
 
 func TestHTTPGatewayInitiateBadJSON(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{bad json`))
+		w.Write([]byte(`{"data":{bad json`))
 	}))
 	defer srv.Close()
 

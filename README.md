@@ -282,7 +282,7 @@ make lint     # go vet ./...
 
 ### Booking Lifecycle
 1. `POST /bookings`: Validates dates/availability, calculates price, sets status `pending_payment`.
-2. `PATCH /bookings/{id}/cancel`: Only allowed for pending/confirmed.
+2. `PATCH /bookings/{id}/cancel`: Allowed only while pending; blocked after confirmed/checked_in/completed.
 3. `POST /bookings/{id}/checkin`: Transitions to `checked_in`.
 
 ### Payment + Refund
@@ -399,6 +399,7 @@ curl -X POST http://localhost:8088/api/v1/bookings \
     "guests": 2
   }'
 ```
+Response includes the booking plus embedded payment info (id, status, provider, payment_url).
 
 **List Bookings**
 ```bash
@@ -446,6 +447,16 @@ curl -X POST http://localhost:8088/api/v1/payments \
 # Calculate signature first (HMAC-SHA256 of payload with key 'sandbox-key')
 PAYLOAD='{"payment_id":"<payment_uuid>","status":"paid"}'
 SIG=$(printf '%s' "$PAYLOAD" | openssl dgst -sha256 -hmac "sandbox-key" -hex | awk '{print $2}')
+
+# PowerShell
+$payload = '{"payment_id":"de236eb3-77c8-4ab2-82d6-5d9bee264441","status":"paid"}'
+$key     = 'sandbox-key'   # PAYMENT_PROVIDER_KEY
+
+$hmac   = [System.Security.Cryptography.HMACSHA256]::new([Text.Encoding]::UTF8.GetBytes($key))
+$bytes  = $hmac.ComputeHash([Text.Encoding]::UTF8.GetBytes($payload))
+$sig    = -join ($bytes | ForEach-Object { $_.ToString('x2') })
+
+$sig  # hex signature
 
 curl -X POST http://localhost:8088/api/v1/payments/webhook \
   -H "Content-Type: application/json" \

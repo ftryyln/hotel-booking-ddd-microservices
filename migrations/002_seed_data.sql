@@ -1,11 +1,13 @@
 -- Seed data for Hotel Booking Microservices
 
 -- 1. Insert Admin User (password: Secret123!)
+-- Admin: email admin@example.com, password Secret123!
 INSERT INTO users (id, email, password, role) VALUES 
 ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'admin@example.com', '$2a$10$vI8aWBnW3fID.ZQ4/zo1G.q1lRps.9cGLcZEiGDMVr5yUP1KUOYTa', 'admin')
 ON CONFLICT (email) DO NOTHING;
 
 -- 2. Insert Customer User (password: Secret123!)
+-- Customer: email customer@example.com, password Secret123!
 INSERT INTO users (id, email, password, role) VALUES 
 ('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'customer@example.com', '$2a$10$vI8aWBnW3fID.ZQ4/zo1G.q1lRps.9cGLcZEiGDMVr5yUP1KUOYTa', 'customer')
 ON CONFLICT (email) DO NOTHING;

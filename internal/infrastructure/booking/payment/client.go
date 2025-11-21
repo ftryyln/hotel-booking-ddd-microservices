@@ -41,10 +41,16 @@ func (g *HTTPGateway) Initiate(ctx context.Context, bookingID uuid.UUID, amount 
 	if resp.StatusCode >= 300 {
 		return domain.PaymentResult{}, fmt.Errorf("payment initiation failed: %d", resp.StatusCode)
 	}
-	var result dto.PaymentResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	// unwrap gateway envelope -> resource -> attributes
+	var envelope struct {
+		Data struct {
+			Attributes dto.PaymentResponse `json:"attributes"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&envelope); err != nil {
 		return domain.PaymentResult{}, err
 	}
+	result := envelope.Data.Attributes
 	paymentID, _ := uuid.Parse(result.ID)
 	return domain.PaymentResult{
 		ID:         paymentID,
