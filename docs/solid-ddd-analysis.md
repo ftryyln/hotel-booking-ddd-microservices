@@ -1,4 +1,4 @@
-# Analisis SOLID Principles & DDD Implementation
+# SOLID Principles & DDD Implementation Analysis
 ## Hotel Booking Microservices Project
 
 ---
@@ -7,11 +7,11 @@
 
 **Overall Score: 8.5/10**
 
-Project ini menunjukkan implementasi yang **sangat baik** dari SOLID principles dan DDD patterns. Struktur kode clean, well-organized, dan mengikuti best practices modern untuk microservices architecture.
+This project demonstrates an **excellent** implementation of SOLID principles and DDD patterns. The code structure is clean, well-organized, and follows modern best practices for microservices architecture.
 
 ---
 
-## 🏗️ Struktur Project
+## 🏗️ Project Structure
 
 ```
 hotel-booking-microservices/
@@ -37,27 +37,27 @@ hotel-booking-microservices/
 **Score: 10/10 - EXCELLENT**
 
 ✅ **Strengths:**
-- Setiap layer punya tanggung jawab yang jelas:
+- Each layer has a clear responsibility:
   - `domain/` - Business logic & entities
   - `usecase/` - Application orchestration
   - `infrastructure/` - External concerns (DB, HTTP, gateways)
-- Separation of concerns sangat baik
+- Excellent separation of concerns
 
 **Example:**
 ```go
-// domain/booking/booking.go - HANYA domain logic
+// domain/booking/booking.go - ONLY domain logic
 type Booking struct {
     ID uuid.UUID
     // ... fields
 }
 
-// usecase/booking/service.go - HANYA orchestration
+// usecase/booking/service.go - ONLY orchestration
 type Service struct {
     repo domain.Repository
     // ... dependencies
 }
 
-// infrastructure/booking/repository/gorm.go - HANYA persistence
+// infrastructure/booking/repository/gorm.go - ONLY persistence
 type GormRepository struct {
     db *gorm.DB
 }
@@ -70,12 +70,12 @@ type GormRepository struct {
 **Score: 8/10 - VERY GOOD**
 
 ✅ **Strengths:**
-- Interface-based design memungkinkan extension tanpa modification
-- Repository pattern dengan interface abstraction
+- Interface-based design allows extension without modification
+- Repository pattern with interface abstraction
 
 **Example:**
 ```go
-// Domain mendefinisikan interface
+// Domain defines interface
 type Repository interface {
     Create(ctx context.Context, b Booking) error
     FindByID(ctx context.Context, id uuid.UUID) (Booking, error)
@@ -87,11 +87,11 @@ type GormRepository struct { /* ... */ }
 ```
 
 ⚠️ **Minor Issues:**
-- Beberapa concrete types di domain layer (bisa lebih abstrak)
+- Some concrete types in domain layer (could be more abstract)
 
 **Recommendation:**
 ```go
-// Bisa ditambahkan factory pattern untuk lebih extensible
+// Could add factory pattern for more extensibility
 type RepositoryFactory interface {
     CreateBookingRepository() Repository
 }
@@ -104,16 +104,16 @@ type RepositoryFactory interface {
 **Score: 10/10 - EXCELLENT**
 
 ✅ **Strengths:**
-- Semua implementations bisa di-substitute dengan interface-nya
-- Tidak ada contract violation
+- All implementations can be substituted with their interface
+- No contract violations
 
 **Example:**
 ```go
-// Bisa swap implementation tanpa breaking code
+// Can swap implementation without breaking code
 var repo domain.Repository
 repo = repository.NewGormRepository(db)  // ✅
-// atau
-repo = repository.NewInMemoryRepository() // ✅ (jika ada)
+// or
+repo = repository.NewInMemoryRepository() // ✅ (if exists)
 ```
 
 ---
@@ -123,19 +123,19 @@ repo = repository.NewInMemoryRepository() // ✅ (jika ada)
 **Score: 8/10 - VERY GOOD**
 
 ✅ **Strengths:**
-- Interface kecil dan focused
-- Tidak ada fat interfaces
+- Small and focused interfaces
+- No fat interfaces
 
 **Example:**
 ```go
-// Separate interfaces untuk different concerns
+// Separate interfaces for different concerns
 type Repository interface { /* CRUD */ }
 type PaymentGateway interface { /* Payment */ }
 type NotificationGateway interface { /* Notification */ }
 ```
 
 ⚠️ **Minor Issues:**
-- Repository interface bisa dipecah lebih kecil (Read vs Write)
+- Repository interface could be split smaller (Read vs Write)
 
 **Recommendation:**
 ```go
@@ -195,7 +195,7 @@ type Booking struct {
 ```
 
 ✅ **Strengths:**
-- Clear entity identity dengan UUID
+- Clear entity identity with UUID
 - Proper lifecycle management
 - Immutable IDs
 
@@ -218,13 +218,13 @@ func (s BookingStatus) CanTransition(target BookingStatus) error {
 ✅ **Strengths:**
 - Immutable value objects
 - Business rules encapsulation
-- Type safety (tidak pakai plain string)
-- Validation logic di value object
+- Type safety (not using plain string)
+- Validation logic in value object
 
 **Example Value Objects:**
-- `BookingStatus` - dengan state transition rules
-- `PaymentStatus` - dengan validation
-- `DateRange` - (kemungkinan ada)
+- `BookingStatus` - with state transition rules
+- `PaymentStatus` - with validation
+- `DateRange` - (likely present)
 
 ---
 
@@ -246,7 +246,7 @@ type Booking struct {
 - Consistency boundaries well-defined
 
 ⚠️ **Could Improve:**
-- Bisa tambahkan methods di aggregate untuk enforce invariants
+- Could add methods in aggregate to enforce invariants
 
 **Recommendation:**
 ```go
@@ -310,8 +310,8 @@ type Service struct {
 - Handles cross-aggregate transactions
 
 ⚠️ **Note:**
-- Ini lebih ke Application Service daripada Domain Service
-- Domain Service seharusnya di `domain/` layer
+- This is more of an Application Service than a Domain Service
+- Domain Service should be in `domain/` layer
 
 **Recommendation:**
 ```go
@@ -413,7 +413,7 @@ func (m bookingModel) toDomain() domain.Booking {
 ✅ **Strengths:**
 - Clear separation between domain and persistence models
 - Translation layer exists
-- Domain tidak terkontaminasi oleh infrastructure concerns
+- Domain is not contaminated by infrastructure concerns
 
 ---
 
@@ -438,7 +438,7 @@ func (m bookingModel) toDomain() domain.Booking {
 ✅ **Strengths:**
 - Clean Architecture / Hexagonal Architecture
 - Dependency rule followed (dependencies point inward)
-- Domain layer independent dari infrastructure
+- Domain layer independent from infrastructure
 
 ---
 
@@ -577,7 +577,7 @@ func (s ActiveBookingsSpec) IsSatisfiedBy(b Booking) bool {
 ## ✅ Recommendations Summary
 
 ### **High Priority**
-1. ✅ **Keep current structure** - sudah sangat baik!
+1. ✅ **Keep current structure** - already excellent!
 2. ✅ **Add more tests** - expand test coverage
 
 ### **Medium Priority**
@@ -594,7 +594,7 @@ func (s ActiveBookingsSpec) IsSatisfiedBy(b Booking) bool {
 
 ## 🎯 Conclusion
 
-Project ini adalah **contoh yang sangat baik** dari implementasi SOLID principles dan DDD patterns dalam Go microservices. 
+This project is an **excellent example** of implementing SOLID principles and DDD patterns in Go microservices.
 
 **Key Strengths:**
 - ✅ Clean Architecture
@@ -603,7 +603,7 @@ Project ini adalah **contoh yang sangat baik** dari implementasi SOLID principle
 - ✅ Good domain modeling
 - ✅ Testable code
 
-**Verdict:** **Production-ready** dengan minor improvements yang bisa dilakukan secara incremental.
+**Verdict:** **Production-ready** with minor improvements that can be done incrementally.
 
 ---
 
@@ -636,5 +636,5 @@ Project ini adalah **contoh yang sangat baik** dari implementasi SOLID principle
     - Created **Ubiquitous Language Glossary** (`docs/glossary.md`)
 
 ### Final Verdict
-Project ini sekarang memiliki implementasi DDD yang **PERFECT (10/10)**.
-Semua rekomendasi dari analisis awal telah diimplementasikan, termasuk advanced patterns seperti Specification dan dokumentasi Ubiquitous Language.
+This project now has a **PERFECT (10/10)** DDD implementation.
+All recommendations from the initial analysis have been implemented, including advanced patterns like Specification and Ubiquitous Language documentation.

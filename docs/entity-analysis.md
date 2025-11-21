@@ -1,7 +1,7 @@
 # Entity & Requirement Analysis
 ## Hotel Booking Microservices
 
-Dokumen ini menganalisis kebutuhan data dan entitas berdasarkan skema database (`migrations/001_init.sql`) dan implementasi domain saat ini.
+This document analyzes data requirements and entities based on the database schema (`migrations/001_init.sql`) and current domain implementation.
 
 ---
 
@@ -68,16 +68,16 @@ erDiagram
 
 ## 📋 Entity Details & Requirements
 
-### 1. User (Pengguna)
+### 1. User
 **Table**: `users`
 **Domain**: `auth.User`
 
 | Attribute | Type | Constraint | Requirement / Business Rule |
 |-----------|------|------------|-----------------------------|
-| `id` | UUID | PK | Unique identifier pengguna. |
-| `email` | TEXT | UNIQUE | Email harus unik, digunakan untuk login. |
-| `password` | TEXT | NOT NULL | Disimpan dalam bentuk hash (bcrypt). |
-| `role` | TEXT | NOT NULL | `admin` (bisa kelola hotel) atau `customer` (hanya booking). |
+| `id` | UUID | PK | Unique user identifier. |
+| `email` | TEXT | UNIQUE | Email must be unique, used for login. |
+| `password` | TEXT | NOT NULL | Stored as hash (bcrypt). |
+| `role` | TEXT | NOT NULL | `admin` (can manage hotels) or `customer` (booking only). |
 
 ### 2. Hotel
 **Table**: `hotels`
@@ -85,83 +85,83 @@ erDiagram
 
 | Attribute | Type | Constraint | Requirement / Business Rule |
 |-----------|------|------------|-----------------------------|
-| `id` | UUID | PK | Unique identifier hotel. |
-| `name` | TEXT | NOT NULL | Nama hotel wajib ada. |
-| `address` | TEXT | - | Alamat fisik hotel. |
+| `id` | UUID | PK | Unique hotel identifier. |
+| `name` | TEXT | NOT NULL | Hotel name is mandatory. |
+| `address` | TEXT | - | Physical address of the hotel. |
 
-### 3. Room Type (Tipe Kamar)
+### 3. Room Type
 **Table**: `room_types`
 **Domain**: `hotel.RoomType`
 
 | Attribute | Type | Constraint | Requirement / Business Rule |
 |-----------|------|------------|-----------------------------|
-| `id` | UUID | PK | Unique identifier tipe kamar. |
-| `hotel_id` | UUID | FK | Tipe kamar harus milik satu hotel spesifik. |
-| `capacity` | INT | NOT NULL | Jumlah tamu maksimal (untuk validasi booking). |
-| `base_price`| NUMERIC| NOT NULL | Harga per malam (basis kalkulasi total). |
+| `id` | UUID | PK | Unique room type identifier. |
+| `hotel_id` | UUID | FK | Room type must belong to a specific hotel. |
+| `capacity` | INT | NOT NULL | Maximum guest capacity (for booking validation). |
+| `base_price`| NUMERIC| NOT NULL | Price per night (basis for total calculation). |
 
-### 4. Room (Unit Kamar)
+### 4. Room (Physical Unit)
 **Table**: `rooms`
 **Domain**: `hotel.Room`
 
 | Attribute | Type | Constraint | Requirement / Business Rule |
 |-----------|------|------------|-----------------------------|
-| `id` | UUID | PK | Unique identifier unit kamar fisik. |
-| `room_type_id`| UUID | FK | Kamar ini termasuk tipe apa (misal: 101 adalah Deluxe). |
-| `number` | TEXT | NOT NULL | Nomor kamar (misal: "101", "202A"). |
-| `status` | TEXT | DEFAULT 'available' | Status fisik: `available`, `maintenance`, `occupied`. |
+| `id` | UUID | PK | Unique physical room unit identifier. |
+| `room_type_id`| UUID | FK | Which type this room belongs to (e.g., 101 is Deluxe). |
+| `number` | TEXT | NOT NULL | Room number (e.g., "101", "202A"). |
+| `status` | TEXT | DEFAULT 'available' | Physical status: `available`, `maintenance`, `occupied`. |
 
-### 5. Booking (Pemesanan)
+### 5. Booking
 **Table**: `bookings`
 **Domain**: `booking.Booking`
 
 | Attribute | Type | Constraint | Requirement / Business Rule |
 |-----------|------|------------|-----------------------------|
-| `id` | UUID | PK | Unique identifier booking. |
-| `user_id` | UUID | FK | Siapa yang memesan. |
-| `room_type_id`| UUID | FK | Tipe kamar yang dipesan (bukan nomor kamar spesifik saat booking). |
-| `check_in` | DATE | NOT NULL | Tanggal masuk. |
-| `check_out` | DATE | NOT NULL | Tanggal keluar (harus > check_in). |
-| `status` | TEXT | NOT NULL | Lifecycle: `pending_payment` → `confirmed` → `checked_in` → `completed` (atau `cancelled`). |
-| `total_price`| NUMERIC| NOT NULL | Harga final setelah diskon/kalkulasi. |
+| `id` | UUID | PK | Unique booking identifier. |
+| `user_id` | UUID | FK | Who made the booking. |
+| `room_type_id`| UUID | FK | Type of room booked (not specific room number at booking time). |
+| `check_in` | DATE | NOT NULL | Check-in date. |
+| `check_out` | DATE | NOT NULL | Check-out date (must be > check_in). |
+| `status` | TEXT | NOT NULL | Lifecycle: `pending_payment` → `confirmed` → `checked_in` → `completed` (or `cancelled`). |
+| `total_price`| NUMERIC| NOT NULL | Final price after discount/calculation. |
 
-### 6. Payment (Pembayaran)
+### 6. Payment
 **Table**: `payments`
 **Domain**: `payment.Payment`
 
 | Attribute | Type | Constraint | Requirement / Business Rule |
 |-----------|------|------------|-----------------------------|
-| `id` | UUID | PK | Unique identifier transaksi pembayaran. |
-| `booking_id`| UUID | UNIQUE FK | Satu booking hanya punya satu pembayaran aktif. |
-| `amount` | NUMERIC| NOT NULL | Jumlah yang harus dibayar (harus match `booking.total_price`). |
+| `id` | UUID | PK | Unique payment transaction identifier. |
+| `booking_id`| UUID | UNIQUE FK | One booking has only one active payment. |
+| `amount` | NUMERIC| NOT NULL | Amount to be paid (must match `booking.total_price`). |
 | `status` | TEXT | NOT NULL | `pending`, `paid`, `failed`, `refunded`. |
-| `provider` | TEXT | NOT NULL | Gateway yang dipakai (misal: `xendit`, `midtrans`). |
+| `provider` | TEXT | NOT NULL | Gateway used (e.g., `xendit`, `midtrans`). |
 
 ---
 
 ## 🔗 Key Relationships & Rules
 
 1.  **Hotel Inventory Hierarchy**:
-    - Hotel punya banyak Room Types.
-    - Room Type punya banyak physical Rooms.
-    - *Rule*: Saat user booking, mereka memilih **Room Type**, bukan Room spesifik. Room spesifik baru di-assign saat Check-in (atau otomatis oleh sistem inventory).
+    - Hotel has many Room Types.
+    - Room Type has many physical Rooms.
+    - *Rule*: When users book, they choose a **Room Type**, not a specific Room. Specific Room is assigned at Check-in (or automatically by inventory system).
 
 2.  **Booking Flow**:
-    - User membuat Booking -> Status `pending_payment`.
-    - System membuat record Payment terkait.
-    - User membayar -> Payment status `paid` -> Booking status `confirmed`.
+    - User creates Booking -> Status `pending_payment`.
+    - System creates related Payment record.
+    - User pays -> Payment status `paid` -> Booking status `confirmed`.
 
 3.  **Data Integrity**:
-    - Semua ID menggunakan **UUID** (v4) untuk menghindari collision dan enumerasi.
-    - Foreign Keys (`REFERENCES`) menjamin referential integrity (tidak bisa booking hotel yang tidak ada).
-    - `TIMESTAMPTZ` digunakan untuk mencatat waktu dengan zona waktu yang jelas.
+    - All IDs use **UUID** (v4) to avoid collision and enumeration.
+    - Foreign Keys (`REFERENCES`) ensure referential integrity (cannot book non-existent hotel).
+    - `TIMESTAMPTZ` used to record time with clear time zone.
 
 ---
 
 ## 💡 Analysis Conclusion
 
-Struktur database ini sudah mendukung kebutuhan inti aplikasi hotel booking:
-- ✅ **Multi-tenancy**: Bisa banyak hotel.
-- ✅ **Inventory Management**: Pemisahan Tipe Kamar (Logical) dan Unit Kamar (Physical).
-- ✅ **Transactional Integrity**: Booking dan Payment terpisah tapi terhubung 1-to-1.
-- ✅ **Audit Trail**: `created_at` di setiap tabel.
+This database structure supports the core needs of the hotel booking application:
+- ✅ **Multi-tenancy**: Can handle multiple hotels.
+- ✅ **Inventory Management**: Separation of Room Type (Logical) and Room Unit (Physical).
+- ✅ **Transactional Integrity**: Booking and Payment separated but linked 1-to-1.
+- ✅ **Audit Trail**: `created_at` in every table.

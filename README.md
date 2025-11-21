@@ -296,27 +296,198 @@ make lint     # go vet ./...
 
 ---
 
-## 📝 Example Workflow (Manual / Postman)
+## 📝 Complete API Reference (Manual / Postman)
 
-1. **Register Admin**
-   ```json
-   POST http://localhost:8080/auth/register
-   { "email": "admin@example.com", "password": "Secret123!", "role": "admin" }
-   ```
-2. **Login** and copy `access_token`.
-3. **Create Hotel** (Auth header required).
-4. **Register Customer**, login, and create booking:
-   ```json
-   POST http://localhost:8082/bookings
-   { "user_id": "cust-id", "room_type_id": "rt-id", "check_in": "2025-12-20", "check_out": "2025-12-23" }
-   ```
-5. **Initiate Payment** via Payment service.
-6. **Simulate Webhook**:
-   ```json
-   POST http://localhost:8083/payments/webhook
-   { "payment_id": "...", "status": "paid", "signature": "..." }
-   ```
-7. **Check Status**: Booking should be `confirmed`.
+Use the following `curl` commands to test the entire system. Ensure you have `jq` installed for pretty printing (optional).
+
+### 1. Authentication
+
+**Register Admin**
+```bash
+curl -X POST http://localhost:8088/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email": "admin@example.com", "password": "Secret123!", "role": "admin"}'
+```
+
+**Register Customer**
+```bash
+curl -X POST http://localhost:8088/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email": "customer@example.com", "password": "Secret123!", "role": "customer"}'
+```
+
+**Login (Save the token!)**
+```bash
+curl -X POST http://localhost:8088/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "admin@example.com", "password": "Secret123!"}'
+# Export token for subsequent requests
+export TOKEN="<paste_access_token_here>"
+```
+
+**Get Current Profile**
+```bash
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8088/api/v1/auth/me/<user_id>
+```
+
+**List Users (Admin Only)**
+```bash
+curl -H "Authorization: Bearer $TOKEN" "http://localhost:8088/api/v1/auth/users?limit=10&offset=0"
+```
+
+---
+
+### 2. Hotel Management
+
+**Create Hotel (Admin)**
+```bash
+curl -X POST http://localhost:8088/api/v1/hotels \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Grand Hotel",
+    "description": "Luxury stay",
+    "address": "123 Main St"
+  }'
+```
+
+**List Hotels**
+```bash
+curl "http://localhost:8088/api/v1/hotels?limit=10"
+```
+
+**Create Room Type (Admin)**
+```bash
+curl -X POST http://localhost:8088/api/v1/room-types \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "hotel_id": "<hotel_uuid>",
+    "name": "Deluxe Suite",
+    "capacity": 2,
+    "base_price": 1500000,
+    "amenities": "Wifi, AC, Breakfast"
+  }'
+```
+
+**Create Room (Admin)**
+```bash
+curl -X POST http://localhost:8088/api/v1/rooms \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "room_type_id": "<room_type_uuid>",
+    "number": "101",
+    "status": "available"
+  }'
+```
+
+---
+
+### 3. Booking Operations
+
+**Create Booking**
+```bash
+curl -X POST http://localhost:8088/api/v1/bookings \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "<user_uuid>",
+    "room_type_id": "<room_type_uuid>",
+    "check_in": "2025-12-20",
+    "check_out": "2025-12-23",
+    "guests": 2
+  }'
+```
+
+**List Bookings**
+```bash
+curl -H "Authorization: Bearer $TOKEN" "http://localhost:8088/api/v1/bookings?limit=10"
+```
+
+**Get Booking Detail**
+```bash
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8088/api/v1/bookings/<booking_uuid>
+```
+
+**Cancel Booking**
+```bash
+curl -X POST http://localhost:8088/api/v1/bookings/<booking_uuid>/cancel \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Check-in Guest**
+```bash
+curl -X POST http://localhost:8088/api/v1/bookings/<booking_uuid>/checkpoint \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"action": "check_in"}'
+```
+
+---
+
+### 4. Payments
+
+**Initiate Payment**
+```bash
+curl -X POST http://localhost:8088/api/v1/payments \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "booking_id": "<booking_uuid>",
+    "amount": 4500000,
+    "currency": "IDR",
+    "provider": "xendit"
+  }'
+```
+
+**Simulate Webhook (Mark Paid)**
+```bash
+# Calculate signature first (HMAC-SHA256 of payload with key 'sandbox-key')
+PAYLOAD='{"payment_id":"<payment_uuid>","status":"paid"}'
+SIG=$(printf '%s' "$PAYLOAD" | openssl dgst -sha256 -hmac "sandbox-key" -hex | awk '{print $2}')
+
+curl -X POST http://localhost:8088/api/v1/payments/webhook \
+  -H "Content-Type: application/json" \
+  -d "{\"payment_id\":\"<payment_uuid>\",\"status\":\"paid\",\"signature\":\"$SIG\"}"
+```
+
+**Get Payment by Booking**
+```bash
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8088/api/v1/payments/by-booking/<booking_uuid>
+```
+
+**Refund Payment**
+```bash
+curl -X POST http://localhost:8088/api/v1/payments/refund \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "payment_id": "<payment_uuid>",
+    "reason": "Customer request"
+  }'
+```
+
+---
+
+### 5. Notifications
+
+**List Notifications**
+```bash
+curl http://localhost:8088/api/v1/notifications?limit=10
+```
+
+**Send Manual Notification (Debug)**
+```bash
+curl -X POST http://localhost:8088/api/v1/notifications \
+  -H "Content-Type: application/json" \
+  -d '{
+    "recipient": "user@example.com",
+    "subject": "Test",
+    "message": "Hello World",
+    "type": "email"
+  }'
+```
 
 ---
 
