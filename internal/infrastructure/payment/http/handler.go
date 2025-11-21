@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	"github.com/ftryyln/hotel-booking-microservices/internal/usecase/payment/assembler"
 	"github.com/ftryyln/hotel-booking-microservices/internal/usecase/payment"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/dto"
 	pkgErrors "github.com/ftryyln/hotel-booking-microservices/pkg/errors"
@@ -61,11 +62,17 @@ func (h *Handler) createPayment(w http.ResponseWriter, r *http.Request) {
 		writeError(w, pkgErrors.New("bad_request", "invalid payload"))
 		return
 	}
-	resp, err := h.service.Initiate(r.Context(), req)
+	cmd, err := assembler.FromPaymentRequest(req)
 	if err != nil {
 		writeError(w, pkgErrors.FromError(err))
 		return
 	}
+	pay, err := h.service.Initiate(r.Context(), cmd)
+	if err != nil {
+		writeError(w, pkgErrors.FromError(err))
+		return
+	}
+	resp := assembler.ToResponse(pay)
 	resource := utils.NewResource(resp.ID, "payment", "/api/v1/payments/"+resp.ID, resp)
 	utils.Respond(w, http.StatusCreated, "payment initiated", resource)
 }
@@ -84,7 +91,12 @@ func (h *Handler) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		writeError(w, pkgErrors.New("bad_request", "invalid webhook"))
 		return
 	}
-	if err := h.service.HandleWebhook(r.Context(), req, string(body)); err != nil {
+	cmd, err := assembler.FromWebhook(req, string(body))
+	if err != nil {
+		writeError(w, pkgErrors.FromError(err))
+		return
+	}
+	if err := h.service.HandleWebhook(r.Context(), cmd); err != nil {
 		writeError(w, pkgErrors.FromError(err))
 		return
 	}
@@ -111,12 +123,18 @@ func (h *Handler) refund(w http.ResponseWriter, r *http.Request) {
 		writeError(w, pkgErrors.New("bad_request", "invalid payload"))
 		return
 	}
-	resp, err := h.service.Refund(r.Context(), req)
+	cmd, err := assembler.FromRefundRequest(req)
 	if err != nil {
 		writeError(w, pkgErrors.FromError(err))
 		return
 	}
-	resource := utils.NewResource(resp.ID, "refund", "/api/v1/payments/refund/"+resp.ID, resp)
+	res, err := h.service.Refund(r.Context(), cmd)
+	if err != nil {
+		writeError(w, pkgErrors.FromError(err))
+		return
+	}
+	dtoResp := assembler.ToRefundResponse(res)
+	resource := utils.NewResource(dtoResp.ID, "refund", "/api/v1/payments/refund/"+dtoResp.ID, dtoResp)
 	utils.Respond(w, http.StatusOK, "refund created", resource)
 }
 
@@ -140,7 +158,8 @@ func (h *Handler) getPayment(w http.ResponseWriter, r *http.Request) {
 		writeError(w, pkgErrors.FromError(err))
 		return
 	}
-	resource := utils.NewResource(resp.ID, "payment", "/api/v1/payments/"+resp.ID, resp)
+	dtoResp := assembler.ToResponse(resp)
+	resource := utils.NewResource(dtoResp.ID, "payment", "/api/v1/payments/"+dtoResp.ID, dtoResp)
 	utils.Respond(w, http.StatusOK, "payment retrieved", resource)
 }
 
@@ -164,7 +183,8 @@ func (h *Handler) getByBooking(w http.ResponseWriter, r *http.Request) {
 		writeError(w, pkgErrors.FromError(err))
 		return
 	}
-	resource := utils.NewResource(resp.ID, "payment", "/api/v1/payments/"+resp.ID, resp)
+	dtoResp := assembler.ToResponse(resp)
+	resource := utils.NewResource(dtoResp.ID, "payment", "/api/v1/payments/"+dtoResp.ID, dtoResp)
 	utils.Respond(w, http.StatusOK, "payment retrieved", resource)
 }
 

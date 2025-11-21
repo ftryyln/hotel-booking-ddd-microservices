@@ -3,14 +3,12 @@ package payment
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 
 	domain "github.com/ftryyln/hotel-booking-microservices/internal/domain/payment"
 	"github.com/ftryyln/hotel-booking-microservices/internal/usecase/payment/assembler"
-	"github.com/ftryyln/hotel-booking-microservices/pkg/dto"
 	pkgErrors "github.com/ftryyln/hotel-booking-microservices/pkg/errors"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/valueobject"
 )
@@ -26,59 +24,46 @@ func NewService(repo domain.Repository, provider domain.Provider, updater domain
 	return &Service{repo: repo, provider: provider, bookingUpdater: updater}
 }
 
-func (s *Service) Initiate(ctx context.Context, req dto.PaymentRequest) (dto.PaymentResponse, error) {
-	bookingID, err := uuid.Parse(req.BookingID)
-	if err != nil {
-		return dto.PaymentResponse{}, pkgErrors.New("bad_request", "invalid booking id")
-	}
-
-	if existing, err := s.repo.FindByBookingID(ctx, bookingID); err == nil {
-		return assembler.ToResponse(existing), pkgErrors.New("conflict", "payment already exists for booking")
-	}
-
-	money, err := valueobject.NewMoney(req.Amount, req.Currency)
-	if err != nil {
-		return dto.PaymentResponse{}, err
+// Initiate creates a new payment from a validated command.
+func (s *Service) Initiate(ctx context.Context, cmd assembler.InitiateCommand) (domain.Payment, error) {
+	if existing, err := s.repo.FindByBookingID(ctx, cmd.BookingID); err == nil {
+		return existing, pkgErrors.New("conflict", "payment already exists for booking")
 	}
 
 	payment := domain.Payment{
 		ID:        uuid.New(),
-		BookingID: bookingID,
-		Amount:    money.Amount,
-		Currency:  money.Currency,
+		BookingID: cmd.BookingID,
+		Amount:    cmd.Money.Amount,
+		Currency:  cmd.Money.Currency,
 		Status:    string(valueobject.PaymentPending),
 		Provider:  "xendit-mock",
 	}
 
 	initiated, err := s.provider.Initiate(ctx, payment)
 	if err != nil {
-		return dto.PaymentResponse{}, err
+		return domain.Payment{}, err
 	}
 	if err := s.repo.Create(ctx, initiated); err != nil {
 		if isUniqueViolation(err) {
-			if existing, errLookup := s.repo.FindByBookingID(ctx, bookingID); errLookup == nil {
-				return assembler.ToResponse(existing), pkgErrors.New("conflict", "payment already exists for booking")
+			if existing, errLookup := s.repo.FindByBookingID(ctx, cmd.BookingID); errLookup == nil {
+				return existing, pkgErrors.New("conflict", "payment already exists for booking")
 			}
-			return dto.PaymentResponse{}, pkgErrors.New("conflict", "payment already exists for booking")
+			return domain.Payment{}, pkgErrors.New("conflict", "payment already exists for booking")
 		}
-		return dto.PaymentResponse{}, err
+		return domain.Payment{}, err
 	}
 
-	return assembler.ToResponse(initiated), nil
+	return initiated, nil
 }
 
-func (s *Service) HandleWebhook(ctx context.Context, req dto.WebhookRequest, payload string) error {
-	paymentID, err := uuid.Parse(req.PaymentID)
-	if err != nil {
-		return pkgErrors.New("bad_request", "invalid payment id")
-	}
-
-	payment, err := s.repo.FindByID(ctx, paymentID)
+// HandleWebhook applies status update from provider webhook.
+func (s *Service) HandleWebhook(ctx context.Context, cmd assembler.WebhookCommand) error {
+	payment, err := s.repo.FindByID(ctx, cmd.PaymentID)
 	if err != nil {
 		return pkgErrors.New("not_found", "payment not found")
 	}
 
-	targetStatus, err := valueobject.ValidatePaymentStatus(req.Status)
+	targetStatus, err := valueobject.ValidatePaymentStatus(cmd.Status)
 	if err != nil {
 		return err
 	}
@@ -91,8 +76,8 @@ func (s *Service) HandleWebhook(ctx context.Context, req dto.WebhookRequest, pay
 		return err
 	}
 
-	canonical := fmt.Sprintf("{\"payment_id\":\"%s\",\"status\":\"%s\"}", req.PaymentID, targetStatus)
-	if !s.provider.VerifySignature(ctx, canonical, req.Signature) {
+	canonical := assembler.CanonicalPayload(cmd)
+	if !s.provider.VerifySignature(ctx, canonical, cmd.Signature) {
 		return pkgErrors.New("forbidden", "invalid signature")
 	}
 
@@ -102,7 +87,7 @@ func (s *Service) HandleWebhook(ctx context.Context, req dto.WebhookRequest, pay
 
 	if s.bookingUpdater != nil {
 		var bookingStatus string
-		switch req.Status {
+		switch cmd.Status {
 		case domain.StatusPaid:
 			bookingStatus = "confirmed"
 		case domain.StatusFailed:
@@ -116,40 +101,29 @@ func (s *Service) HandleWebhook(ctx context.Context, req dto.WebhookRequest, pay
 	return nil
 }
 
-func (s *Service) Refund(ctx context.Context, req dto.RefundRequest) (dto.RefundResponse, error) {
-	paymentID, err := uuid.Parse(req.PaymentID)
+// Refund requests refund via provider.
+func (s *Service) Refund(ctx context.Context, cmd assembler.RefundCommand) (assembler.RefundResult, error) {
+	payment, err := s.repo.FindByID(ctx, cmd.PaymentID)
 	if err != nil {
-		return dto.RefundResponse{}, pkgErrors.New("bad_request", "invalid payment id")
+		return assembler.RefundResult{}, err
 	}
 
-	payment, err := s.repo.FindByID(ctx, paymentID)
+	ref, err := s.provider.Refund(ctx, payment, cmd.Reason)
 	if err != nil {
-		return dto.RefundResponse{}, err
+		return assembler.RefundResult{}, err
 	}
 
-	ref, err := s.provider.Refund(ctx, payment, req.Reason)
-	if err != nil {
-		return dto.RefundResponse{}, err
-	}
-
-	return assembler.ToRefundResponse(payment.ID.String(), "refunded", ref), nil
+	return assembler.ToRefundResult(payment.ID, ref), nil
 }
 
-func (s *Service) GetPayment(ctx context.Context, id uuid.UUID) (dto.PaymentResponse, error) {
-	p, err := s.repo.FindByID(ctx, id)
-	if err != nil {
-		return dto.PaymentResponse{}, err
-	}
-	return assembler.ToResponse(p), nil
+// GetPayment fetches payment by ID.
+func (s *Service) GetPayment(ctx context.Context, id uuid.UUID) (domain.Payment, error) {
+	return s.repo.FindByID(ctx, id)
 }
 
 // GetByBooking returns payment for a given booking.
-func (s *Service) GetByBooking(ctx context.Context, bookingID uuid.UUID) (dto.PaymentResponse, error) {
-	p, err := s.repo.FindByBookingID(ctx, bookingID)
-	if err != nil {
-		return dto.PaymentResponse{}, err
-	}
-	return assembler.ToResponse(p), nil
+func (s *Service) GetByBooking(ctx context.Context, bookingID uuid.UUID) (domain.Payment, error) {
+	return s.repo.FindByBookingID(ctx, bookingID)
 }
 
 func isUniqueViolation(err error) bool {

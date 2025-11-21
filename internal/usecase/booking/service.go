@@ -9,7 +9,6 @@ import (
 	domain "github.com/ftryyln/hotel-booking-microservices/internal/domain/booking"
 	hdomain "github.com/ftryyln/hotel-booking-microservices/internal/domain/hotel"
 	"github.com/ftryyln/hotel-booking-microservices/internal/usecase/booking/assembler"
-	"github.com/ftryyln/hotel-booking-microservices/pkg/dto"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/errors"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/query"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/valueobject"
@@ -27,55 +26,41 @@ func NewService(repo domain.Repository, hotels hdomain.Repository, payments doma
 	return &Service{repo: repo, hotels: hotels, payments: payments, notifier: notifier}
 }
 
-func (s *Service) CreateBooking(ctx context.Context, req dto.BookingRequest) (dto.BookingResponse, error) {
-	dateRange, err := valueobject.NewDateRange(req.CheckIn, req.CheckOut)
+func (s *Service) CreateBooking(ctx context.Context, cmd assembler.CreateCommand) (domain.Booking, domain.PaymentResult, error) {
+	dateRange, err := valueobject.NewDateRange(cmd.CheckIn, cmd.CheckOut)
 	if err != nil {
-		return dto.BookingResponse{}, err
+		return domain.Booking{}, domain.PaymentResult{}, err
 	}
 	nights := dateRange.Nights()
-	rtID, err := uuid.Parse(req.RoomTypeID)
+	rt, err := s.hotels.GetRoomType(ctx, cmd.RoomTypeID)
 	if err != nil {
-		return dto.BookingResponse{}, errors.New("bad_request", "invalid room type id")
-	}
-	rt, err := s.hotels.GetRoomType(ctx, rtID)
-	if err != nil {
-		return dto.BookingResponse{}, errors.New("not_found", "room type not found")
-	}
-
-	userID, err := uuid.Parse(req.UserID)
-	if err != nil {
-		return dto.BookingResponse{}, errors.New("bad_request", "invalid user id")
-	}
-
-	guests := req.Guests
-	if guests <= 0 {
-		guests = 1
+		return domain.Booking{}, domain.PaymentResult{}, errors.New("not_found", "room type not found")
 	}
 
 	booking := domain.Booking{
 		ID:          uuid.New(),
-		UserID:      userID,
-		RoomTypeID:  rtID,
-		CheckIn:     req.CheckIn,
-		CheckOut:    req.CheckOut,
+		UserID:      cmd.UserID,
+		RoomTypeID:  cmd.RoomTypeID,
+		CheckIn:     cmd.CheckIn,
+		CheckOut:    cmd.CheckOut,
 		Status:      string(valueobject.StatusPendingPayment),
-		Guests:      guests,
+		Guests:      cmd.Guests,
 		TotalPrice:  float64(nights) * rt.BasePrice,
 		TotalNights: nights,
 	}
 
 	if err := s.repo.Create(ctx, booking); err != nil {
-		return dto.BookingResponse{}, err
+		return domain.Booking{}, domain.PaymentResult{}, err
 	}
 
 	paymentResult, err := s.payments.Initiate(ctx, booking.ID, booking.TotalPrice)
 	if err != nil {
-		return dto.BookingResponse{}, err
+		return domain.Booking{}, domain.PaymentResult{}, err
 	}
 
 	_ = s.notifier.Notify(ctx, "booking_created", booking.ID.String())
 
-	return assembler.ToResponse(booking, paymentResult), nil
+	return booking, paymentResult, nil
 }
 
 func (s *Service) CancelBooking(ctx context.Context, id uuid.UUID) error {
@@ -141,25 +126,21 @@ func (s *Service) Checkpoint(ctx context.Context, id uuid.UUID, action string) e
 	return s.repo.UpdateStatus(ctx, id, status)
 }
 
-func (s *Service) GetBooking(ctx context.Context, id uuid.UUID) (dto.BookingResponse, error) {
+func (s *Service) GetBooking(ctx context.Context, id uuid.UUID) (domain.Booking, error) {
 	b, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return dto.BookingResponse{}, errors.New("not_found", "booking not found")
+			return domain.Booking{}, errors.New("not_found", "booking not found")
 		}
-		return dto.BookingResponse{}, err
+		return domain.Booking{}, err
 	}
-	return assembler.ToResponse(b, domain.PaymentResult{}), nil
+	return b, nil
 }
 
-func (s *Service) ListBookings(ctx context.Context, opts query.Options) ([]dto.BookingResponse, error) {
+func (s *Service) ListBookings(ctx context.Context, opts query.Options) ([]domain.Booking, error) {
 	bks, err := s.repo.List(ctx, opts.Normalize(50))
 	if err != nil {
 		return nil, err
 	}
-	resp := make([]dto.BookingResponse, 0, len(bks))
-	for _, b := range bks {
-		resp = append(resp, assembler.ToResponse(b, domain.PaymentResult{}))
-	}
-	return resp, nil
+	return bks, nil
 }

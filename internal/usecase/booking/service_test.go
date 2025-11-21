@@ -12,6 +12,7 @@ import (
 	domain "github.com/ftryyln/hotel-booking-microservices/internal/domain/booking"
 	hdomain "github.com/ftryyln/hotel-booking-microservices/internal/domain/hotel"
 	"github.com/ftryyln/hotel-booking-microservices/internal/usecase/booking"
+	"github.com/ftryyln/hotel-booking-microservices/internal/usecase/booking/assembler"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/dto"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/query"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/valueobject"
@@ -69,7 +70,10 @@ func TestCreateBooking(t *testing.T) {
 				hotelRepo.err = nil
 			}
 
-			_, err := service.CreateBooking(context.Background(), tt.req)
+			cmd, err := assembler.FromRequest(tt.req)
+			if err == nil {
+				_, _, err = service.CreateBooking(context.Background(), cmd)
+			}
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {

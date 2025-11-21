@@ -8,50 +8,60 @@ import (
 	"github.com/google/uuid"
 
 	domain "github.com/ftryyln/hotel-booking-microservices/internal/domain/notification"
-	"github.com/ftryyln/hotel-booking-microservices/pkg/dto"
+	"github.com/ftryyln/hotel-booking-microservices/internal/usecase/notification/assembler"
+	"github.com/ftryyln/hotel-booking-microservices/pkg/query"
 )
 
 // Service wraps dispatcher implementation.
 type Service struct {
 	dispatcher domain.Dispatcher
 	mu         sync.Mutex
-	store      []dto.NotificationResponse
+	store      []domain.Notification
 }
 
 func NewService(dispatcher domain.Dispatcher) *Service {
 	return &Service{dispatcher: dispatcher}
 }
 
-func (s *Service) Send(ctx context.Context, req dto.NotificationRequest) (dto.NotificationResponse, error) {
-	if err := s.dispatcher.Dispatch(ctx, req.Target, req.Message); err != nil {
-		return dto.NotificationResponse{}, err
+func (s *Service) Send(ctx context.Context, cmd assembler.Command) (domain.Notification, error) {
+	if err := s.dispatcher.Dispatch(ctx, cmd.Target, cmd.Message); err != nil {
+		return domain.Notification{}, err
 	}
-	return s.persist(req), nil
+	return s.persist(cmd), nil
 }
 
-func (s *Service) persist(req dto.NotificationRequest) dto.NotificationResponse {
+func (s *Service) persist(cmd assembler.Command) domain.Notification {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	record := dto.NotificationResponse{
+	record := domain.Notification{
 		ID:        uuid.New().String(),
-		Target:    req.Target,
-		Type:      req.Type,
-		Message:   req.Message,
+		Target:    cmd.Target,
+		Type:      cmd.Type,
+		Message:   cmd.Message,
 		CreatedAt: time.Now().UTC(),
 	}
 	s.store = append(s.store, record)
 	return record
 }
 
-func (s *Service) List(_ context.Context) []dto.NotificationResponse {
+func (s *Service) List(_ context.Context, opts query.Options) []domain.Notification {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	out := make([]dto.NotificationResponse, len(s.store))
-	copy(out, s.store)
+	norm := opts.Normalize(50)
+	start := norm.Offset
+	if start > len(s.store) {
+		start = len(s.store)
+	}
+	end := start + norm.Limit
+	if end > len(s.store) {
+		end = len(s.store)
+	}
+	out := make([]domain.Notification, end-start)
+	copy(out, s.store[start:end])
 	return out
 }
 
-func (s *Service) Get(_ context.Context, id string) (dto.NotificationResponse, bool) {
+func (s *Service) Get(_ context.Context, id string) (domain.Notification, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, n := range s.store {
@@ -59,5 +69,5 @@ func (s *Service) Get(_ context.Context, id string) (dto.NotificationResponse, b
 			return n, true
 		}
 	}
-	return dto.NotificationResponse{}, false
+	return domain.Notification{}, false
 }

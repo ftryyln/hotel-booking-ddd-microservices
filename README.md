@@ -59,6 +59,31 @@ Shared packages live under `pkg/` (config, logger, middleware, dto, etc.). Each 
 
 ---
 
+## API Shape (assemblers, domain-first, pagination)
+
+- Handlers stay thin: DTO → inbound assembler → usecase (domain) → outbound assembler → DTO envelope (Auth, Hotel, Booking, Payment, Notification).
+- Usecases return domain models; mapping to DTO hanya di handler boundary.
+- Pagination: list endpoints menerima `limit`/`offset` (default limit 50) di hotel, booking, auth, notification.
+- Booking/Payment/Notification requests divalidasi di assembler (ID/date/money/webhook signature).
+
+**Mock payment webhook signature**
+```bash
+PAYLOAD='{"payment_id":"<uuid>","status":"paid"}'
+SIG=$(printf '%s' "$PAYLOAD" | openssl dgst -sha256 -hmac "$PAYMENT_PROVIDER_KEY" -hex | awk '{print $2}')
+curl -X POST http://localhost:8088/api/v1/payments/webhook \
+  -H "Content-Type: application/json" \
+  -d '{"payment_id":"<uuid>","status":"paid","signature":"'"$SIG"'"}'
+```
+
+Regenerate Swagger setelah perubahan kode (butuh `swag`):
+```
+swag init -g cmd/booking-service/main.go -o docs/booking-service
+swag init -g cmd/payment-service/main.go -o docs/payment-service
+swag init -g cmd/notification-service/main.go -o docs/notification-service
+```
+
+---
+
 ## Repository Layout
 
 ```
@@ -67,6 +92,7 @@ internal/
   domain/<bounded>       # entities & repository interfaces
   usecase/<bounded>      # core business logic
   infrastructure/        # http handlers, repositories, provider clients, gateway logic
+  usecase/<bounded>/assembler # inbound/outbound mapping DTO <-> domain
 pkg/                     # shared libs (config, dto, middleware, logger, etc.)
 migrations/001_init.sql  # SQL schema seed
 build/<service>/Dockerfile
@@ -341,3 +367,9 @@ curl -v http://localhost:8088/metrics                    # Prometheus metrics
 ## License
 
 This repository is intended as a technical test / sample implementation; no explicit license is provided. Adapt and extend as needed for your environment.
+
+---
+
+## Author
+
+Fitry Yuliani

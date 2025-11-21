@@ -10,7 +10,7 @@ import (
 
 	domain "github.com/ftryyln/hotel-booking-microservices/internal/domain/payment"
 	"github.com/ftryyln/hotel-booking-microservices/internal/usecase/payment"
-	"github.com/ftryyln/hotel-booking-microservices/pkg/dto"
+	"github.com/ftryyln/hotel-booking-microservices/internal/usecase/payment/assembler"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/valueobject"
 )
 
@@ -33,16 +33,16 @@ func TestHandleWebhook(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			provider.signatureValid = tt.valid
-			updater.statuses = nil
-			req := dto.WebhookRequest{PaymentID: paymentID.String(), Status: domain.StatusPaid, Signature: "sig"}
-			err := service.HandleWebhook(context.Background(), req, "payload")
-			if tt.wantErr {
-				require.Error(t, err)
-				require.Len(t, updater.statuses, 0)
-			} else {
-				require.NoError(t, err)
+			t.Run(tt.name, func(t *testing.T) {
+				provider.signatureValid = tt.valid
+				updater.statuses = nil
+				cmd := assembler.WebhookCommand{PaymentID: paymentID, Status: domain.StatusPaid, Signature: "sig", RawPayload: "payload"}
+				err := service.HandleWebhook(context.Background(), cmd)
+				if tt.wantErr {
+					require.Error(t, err)
+					require.Len(t, updater.statuses, 0)
+				} else {
+					require.NoError(t, err)
 				require.Equal(t, []string{"confirmed"}, updater.statuses)
 			}
 		})
@@ -66,19 +66,19 @@ func TestRefund(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if tt.shouldFail {
-				provider.refundErr = errors.New("fail")
-			} else {
-				provider.refundErr = nil
-			}
-			req := dto.RefundRequest{PaymentID: paymentID.String(), Amount: 1000}
-			_, err := service.Refund(context.Background(), req)
-			if tt.shouldFail {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
+			t.Run(tt.name, func(t *testing.T) {
+				if tt.shouldFail {
+					provider.refundErr = errors.New("fail")
+				} else {
+					provider.refundErr = nil
+				}
+				cmd := assembler.RefundCommand{PaymentID: paymentID, Reason: "test"}
+				_, err := service.Refund(context.Background(), cmd)
+				if tt.shouldFail {
+					require.Error(t, err)
+				} else {
+					require.NoError(t, err)
+				}
 		})
 	}
 }

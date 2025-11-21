@@ -8,19 +8,21 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ftryyln/hotel-booking-microservices/internal/usecase/notification"
+	"github.com/ftryyln/hotel-booking-microservices/internal/usecase/notification/assembler"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/dto"
+	"github.com/ftryyln/hotel-booking-microservices/pkg/query"
 )
 
 func TestSendAndList(t *testing.T) {
 	dispatcher := &dispatcherStub{}
 	svc := notification.NewService(dispatcher)
 
-	req := dto.NotificationRequest{Type: "email", Target: "user@example.com", Message: "hello"}
-	resp, err := svc.Send(context.Background(), req)
+	cmd, _ := assembler.FromRequest(dto.NotificationRequest{Type: "email", Target: "user@example.com", Message: "hello"})
+	resp, err := svc.Send(context.Background(), cmd)
 	require.NoError(t, err)
 	require.NotEmpty(t, resp.ID)
 
-	list := svc.List(context.Background())
+	list := svc.List(context.Background(), query.Options{Limit: 10})
 	require.Len(t, list, 1)
 
 	found, ok := svc.Get(context.Background(), resp.ID)
@@ -31,7 +33,8 @@ func TestSendAndList(t *testing.T) {
 func TestSendDispatchError(t *testing.T) {
 	dispatcher := &dispatcherStub{err: errors.New("fail")}
 	svc := notification.NewService(dispatcher)
-	_, err := svc.Send(context.Background(), dto.NotificationRequest{Type: "email", Target: "x", Message: "y"})
+	cmd, _ := assembler.FromRequest(dto.NotificationRequest{Type: "email", Target: "x", Message: "y"})
+	_, err := svc.Send(context.Background(), cmd)
 	require.Error(t, err)
 }
 

@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/ftryyln/hotel-booking-microservices/internal/usecase/hotel/assembler"
 	domain "github.com/ftryyln/hotel-booking-microservices/internal/domain/hotel"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/dto"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/errors"
@@ -31,33 +32,20 @@ func (s *Service) CreateHotel(ctx context.Context, req dto.HotelRequest) (uuid.U
 	return h.ID, s.repo.CreateHotel(ctx, h)
 }
 
-func (s *Service) ListHotels(ctx context.Context, opts query.Options) ([]dto.HotelResponse, error) {
+func (s *Service) ListHotels(ctx context.Context, opts query.Options) ([]assembler.HotelAggregate, error) {
 	hotels, err := s.repo.ListHotels(ctx, opts.Normalize(50))
 	if err != nil {
 		return nil, err
 	}
-	var resp []dto.HotelResponse
+	var aggs []assembler.HotelAggregate
 	for _, h := range hotels {
 		roomTypes, _ := s.repo.ListRoomTypes(ctx, h.ID)
-		var summaries []dto.RoomTypeSummary
-		for _, rt := range roomTypes {
-			summaries = append(summaries, dto.RoomTypeSummary{
-				ID:       rt.ID.String(),
-				Name:     rt.Name,
-				Capacity: rt.Capacity,
-				Price:    rt.BasePrice,
-			})
-		}
-		resp = append(resp, dto.HotelResponse{
-			ID:          h.ID.String(),
-			Name:        h.Name,
-			Description: h.Description,
-			Address:     h.Address,
-			CreatedAt:   h.CreatedAt,
-			RoomTypes:   summaries,
+		aggs = append(aggs, assembler.HotelAggregate{
+			Hotel:     h,
+			RoomTypes: roomTypes,
 		})
 	}
-	return resp, nil
+	return aggs, nil
 }
 
 func (s *Service) CreateRoomType(ctx context.Context, req dto.RoomTypeRequest) (uuid.UUID, error) {
@@ -89,66 +77,30 @@ func (s *Service) CreateRoom(ctx context.Context, req dto.RoomRequest) (uuid.UUI
 	return room.ID, s.repo.CreateRoom(ctx, room)
 }
 
-func (s *Service) GetHotel(ctx context.Context, id uuid.UUID, opts query.Options) (dto.HotelResponse, error) {
+func (s *Service) GetHotel(ctx context.Context, id uuid.UUID, opts query.Options) (assembler.HotelAggregate, error) {
 	h, err := s.repo.GetHotel(ctx, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return dto.HotelResponse{}, errors.New("not_found", "hotel not found")
+			return assembler.HotelAggregate{}, errors.New("not_found", "hotel not found")
 		}
-		return dto.HotelResponse{}, err
+		return assembler.HotelAggregate{}, err
 	}
 	roomTypes, _ := s.repo.ListRoomTypes(ctx, h.ID)
-	var summaries []dto.RoomTypeSummary
-	for _, rt := range roomTypes {
-		summaries = append(summaries, dto.RoomTypeSummary{
-			ID:       rt.ID.String(),
-			Name:     rt.Name,
-			Capacity: rt.Capacity,
-			Price:    rt.BasePrice,
-		})
-	}
-	return dto.HotelResponse{
-		ID:          h.ID.String(),
-		Name:        h.Name,
-		Description: h.Description,
-		Address:     h.Address,
-		CreatedAt:   h.CreatedAt,
-		RoomTypes:   summaries,
-	}, nil
+	return assembler.HotelAggregate{Hotel: h, RoomTypes: roomTypes}, nil
 }
 
-func (s *Service) ListRoomTypes(ctx context.Context, opts query.Options) ([]dto.RoomTypeResponse, error) {
+func (s *Service) ListRoomTypes(ctx context.Context, opts query.Options) ([]domain.RoomType, error) {
 	rts, err := s.repo.ListAllRoomTypes(ctx, opts.Normalize(50))
 	if err != nil {
 		return nil, err
 	}
-	var resp []dto.RoomTypeResponse
-	for _, rt := range rts {
-		resp = append(resp, dto.RoomTypeResponse{
-			ID:        rt.ID.String(),
-			HotelID:   rt.HotelID.String(),
-			Name:      rt.Name,
-			Capacity:  rt.Capacity,
-			BasePrice: rt.BasePrice,
-			Amenities: rt.Amenities,
-		})
-	}
-	return resp, nil
+	return rts, nil
 }
 
-func (s *Service) ListRooms(ctx context.Context, opts query.Options) ([]dto.RoomResponse, error) {
+func (s *Service) ListRooms(ctx context.Context, opts query.Options) ([]domain.Room, error) {
 	rooms, err := s.repo.ListRooms(ctx, opts.Normalize(50))
 	if err != nil {
 		return nil, err
 	}
-	var resp []dto.RoomResponse
-	for _, r := range rooms {
-		resp = append(resp, dto.RoomResponse{
-			ID:         r.ID.String(),
-			RoomTypeID: r.RoomTypeID.String(),
-			Number:     r.Number,
-			Status:     r.Status,
-		})
-	}
-	return resp, nil
+	return rooms, nil
 }

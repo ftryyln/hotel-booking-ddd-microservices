@@ -1,11 +1,23 @@
 package assembler
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 
 	domain "github.com/ftryyln/hotel-booking-microservices/internal/domain/booking"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/dto"
+	pkgErrors "github.com/ftryyln/hotel-booking-microservices/pkg/errors"
 )
+
+// CreateCommand represents inbound booking creation intent.
+type CreateCommand struct {
+	UserID     uuid.UUID
+	RoomTypeID uuid.UUID
+	CheckIn    time.Time
+	CheckOut   time.Time
+	Guests     int
+}
 
 // ToResponse maps domain booking plus optional payment info to response DTO.
 func ToResponse(b domain.Booking, payment domain.PaymentResult) dto.BookingResponse {
@@ -27,4 +39,33 @@ func ToResponse(b domain.Booking, payment domain.PaymentResult) dto.BookingRespo
 		}
 	}
 	return resp
+}
+
+// FromRequest validates incoming DTO to command.
+func FromRequest(req dto.BookingRequest) (CreateCommand, error) {
+	userID, err := uuid.Parse(req.UserID)
+	if err != nil {
+		return CreateCommand{}, pkgErrors.New("bad_request", "invalid user id")
+	}
+	roomTypeID, err := uuid.Parse(req.RoomTypeID)
+	if err != nil {
+		return CreateCommand{}, pkgErrors.New("bad_request", "invalid room type id")
+	}
+	if req.CheckIn.IsZero() || req.CheckOut.IsZero() {
+		return CreateCommand{}, pkgErrors.New("bad_request", "date required")
+	}
+	if !req.CheckIn.Before(req.CheckOut) {
+		return CreateCommand{}, pkgErrors.New("bad_request", "check_in must be before check_out")
+	}
+	guests := req.Guests
+	if guests <= 0 {
+		guests = 1
+	}
+	return CreateCommand{
+		UserID:     userID,
+		RoomTypeID: roomTypeID,
+		CheckIn:    req.CheckIn,
+		CheckOut:   req.CheckOut,
+		Guests:     guests,
+	}, nil
 }
