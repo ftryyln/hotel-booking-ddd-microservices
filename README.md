@@ -1,7 +1,7 @@
 # Hotel Booking Microservices Platform
 
 [![Go Version](https://img.shields.io/badge/Go-1.23-blue.svg)](https://golang.org/doc/go1.23)
-[![Architecture](https://img.shields.io/badge/Architecture-DDD%20%26%20Clean%20Arch-green.svg)](docs/solid-ddd-analysis.md)
+[![Architecture](https://img.shields.io/badge/Architecture-DDD%20%26%20Clean%20Arch-green.svg)](docs/architecture-review.md)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 > **A production-grade, backend-only hotel booking system demonstrating advanced Domain-Driven Design (DDD) and SOLID principles in Go.**
@@ -15,7 +15,7 @@ This platform is decomposed into **six microservices** behind an API Gateway, fe
 | Document | Description |
 |----------|-------------|
 | **[🏗️ Project Structure](docs/project-structure.md)** | Detailed breakdown of folders, layers, and key files. |
-| **[📊 SOLID & DDD Analysis](docs/solid-ddd-analysis.md)** | In-depth architectural review and scoring (Current: 10/10). |
+| **[📐 Architecture Review](docs/architecture-review.md)** | Design decisions, patterns, and architectural principles. |
 | **[🗺️ Entity Analysis](docs/entity-analysis.md)** | Database schema, entities, and business rules. |
 | **[🔗 ER Diagram](docs/ERD.md)** | Visual representation of database relationships. |
 | **[📖 Glossary](docs/glossary.md)** | Ubiquitous Language definitions. |
