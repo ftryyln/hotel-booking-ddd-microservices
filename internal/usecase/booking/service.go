@@ -3,13 +3,17 @@ package booking
 import (
 	"context"
 	"database/sql"
+	"time" // Added time import
 
 	"github.com/google/uuid"
 
 	domain "github.com/ftryyln/hotel-booking-microservices/internal/domain/booking"
 	hdomain "github.com/ftryyln/hotel-booking-microservices/internal/domain/hotel"
 	"github.com/ftryyln/hotel-booking-microservices/internal/usecase/booking/assembler"
+	pkgDomain "github.com/ftryyln/hotel-booking-microservices/pkg/domain"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/errors"
+
+
 	"github.com/ftryyln/hotel-booking-microservices/pkg/query"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/valueobject"
 )
@@ -27,15 +31,21 @@ func NewService(repo domain.Repository, hotels hdomain.Repository, payments doma
 }
 
 func (s *Service) CreateBooking(ctx context.Context, cmd assembler.CreateCommand) (domain.Booking, domain.PaymentResult, error) {
+	// Use value objects
 	dateRange, err := valueobject.NewDateRange(cmd.CheckIn, cmd.CheckOut)
 	if err != nil {
 		return domain.Booking{}, domain.PaymentResult{}, err
 	}
-	nights := dateRange.Nights()
+
 	rt, err := s.hotels.GetRoomType(ctx, cmd.RoomTypeID)
 	if err != nil {
 		return domain.Booking{}, domain.PaymentResult{}, errors.New("not_found", "room type not found")
 	}
+
+	// Use domain service for pricing
+	pricingService := domain.NewPricingService()
+	baseTotal := pricingService.CalculateTotalPrice(rt.BasePrice, dateRange.Nights(), cmd.Guests)
+	totalPrice := pricingService.ApplyDiscount(baseTotal, dateRange.Nights())
 
 	booking := domain.Booking{
 		ID:          uuid.New(),
@@ -45,20 +55,26 @@ func (s *Service) CreateBooking(ctx context.Context, cmd assembler.CreateCommand
 		CheckOut:    cmd.CheckOut,
 		Status:      string(valueobject.StatusPendingPayment),
 		Guests:      cmd.Guests,
-		TotalPrice:  float64(nights) * rt.BasePrice,
-		TotalNights: nights,
+		TotalPrice:  totalPrice,
+		TotalNights: dateRange.Nights(),
+		CreatedAt:   time.Now(),
 	}
+
+	// Record creation event
+	booking.RecordEvent(domain.NewBookingCreated(booking.ID, booking.UserID, booking.RoomTypeID, booking.TotalPrice, booking.Guests))
 
 	if err := s.repo.Create(ctx, booking); err != nil {
 		return domain.Booking{}, domain.PaymentResult{}, err
 	}
 
+	// Publish domain events
+	s.publishEvents(ctx, booking.Events())
+	booking.ClearEvents()
+
 	paymentResult, err := s.payments.Initiate(ctx, booking.ID, booking.TotalPrice)
 	if err != nil {
 		return domain.Booking{}, domain.PaymentResult{}, err
 	}
-
-	_ = s.notifier.Notify(ctx, "booking_created", booking.ID.String())
 
 	return booking, paymentResult, nil
 }
@@ -68,32 +84,54 @@ func (s *Service) CancelBooking(ctx context.Context, id uuid.UUID) error {
 	if err != nil {
 		return err
 	}
-	if booking.Status != string(valueobject.StatusPendingPayment) {
-		return errors.New("bad_request", "cannot cancel at this stage")
+
+	// Use domain method
+	if err := booking.Cancel("user_requested"); err != nil {
+		return err
 	}
-	return s.repo.UpdateStatus(ctx, id, string(valueobject.StatusCancelled))
+
+	if err := s.repo.Save(ctx, booking); err != nil {
+		return err
+	}
+
+	s.publishEvents(ctx, booking.Events())
+	return nil
 }
 
 func (s *Service) ApplyStatus(ctx context.Context, id uuid.UUID, status string) error {
-	bk, err := s.repo.FindByID(ctx, id)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return errors.New("not_found", "booking not found")
-		}
-		return err
-	}
-	current, err := valueobject.ValidateBookingStatus(bk.Status)
+	// Deprecated: Use specific domain methods instead (Confirm, CheckIn, Complete)
+	// Keeping for backward compatibility if needed, but redirecting to domain methods where possible
+	booking, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return err
 	}
-	target, err := valueobject.ValidateBookingStatus(status)
-	if err != nil {
+
+	var updateErr error
+	switch status {
+	case domain.StatusConfirmed:
+		updateErr = booking.Confirm()
+	case domain.StatusCancelled:
+		updateErr = booking.Cancel("admin_requested")
+	case domain.StatusCheckedIn:
+		updateErr = booking.GuestCheckIn()
+
+	case domain.StatusCompleted:
+		updateErr = booking.Complete()
+	default:
+		// Fallback for direct status update (legacy)
+		return s.repo.UpdateStatus(ctx, id, status)
+	}
+
+	if updateErr != nil {
+		return updateErr
+	}
+
+	if err := s.repo.Save(ctx, booking); err != nil {
 		return err
 	}
-	if err := current.CanTransition(target); err != nil {
-		return err
-	}
-	return s.repo.UpdateStatus(ctx, id, string(target))
+
+	s.publishEvents(ctx, booking.Events())
+	return nil
 }
 
 func (s *Service) Checkpoint(ctx context.Context, id uuid.UUID, action string) error {
@@ -104,26 +142,28 @@ func (s *Service) Checkpoint(ctx context.Context, id uuid.UUID, action string) e
 		}
 		return err
 	}
-	if bk.Status == domain.StatusCancelled || bk.Status == domain.StatusCompleted {
-		return errors.New("bad_request", "booking cannot change state from current status")
-	}
 
-	var status string
+	var updateErr error
 	switch action {
 	case "check_in":
-		if bk.Status != domain.StatusConfirmed {
-			return errors.New("bad_request", "booking must be confirmed before check-in")
-		}
-		status = string(valueobject.StatusCheckedIn)
+		updateErr = bk.GuestCheckIn()
+
 	case "complete":
-		if bk.Status != string(valueobject.StatusCheckedIn) {
-			return errors.New("bad_request", "booking must be checked-in before completion")
-		}
-		status = string(valueobject.StatusCompleted)
+		updateErr = bk.Complete()
 	default:
 		return errors.New("bad_request", "unknown checkpoint action")
 	}
-	return s.repo.UpdateStatus(ctx, id, status)
+
+	if updateErr != nil {
+		return updateErr
+	}
+
+	if err := s.repo.Save(ctx, bk); err != nil {
+		return err
+	}
+
+	s.publishEvents(ctx, bk.Events())
+	return nil
 }
 
 func (s *Service) GetBooking(ctx context.Context, id uuid.UUID) (domain.Booking, error) {
@@ -144,3 +184,10 @@ func (s *Service) ListBookings(ctx context.Context, opts query.Options) ([]domai
 	}
 	return bks, nil
 }
+
+func (s *Service) publishEvents(ctx context.Context, events []pkgDomain.DomainEvent) {
+	for _, event := range events {
+		_ = s.notifier.Notify(ctx, event.EventType(), event)
+	}
+}
+

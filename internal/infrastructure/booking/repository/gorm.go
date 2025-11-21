@@ -79,6 +79,34 @@ func (r *GormRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status 
 	return nil
 }
 
+func (r *GormRepository) Save(ctx context.Context, b domain.Booking) error {
+	return r.db.WithContext(ctx).Save(&bookingModel{
+		ID:          b.ID,
+		UserID:      b.UserID,
+		RoomTypeID:  b.RoomTypeID,
+		CheckIn:     b.CheckIn,
+		CheckOut:    b.CheckOut,
+		Status:      b.Status,
+		Guests:      b.Guests,
+		TotalPrice:  b.TotalPrice,
+		TotalNights: b.TotalNights,
+		CreatedAt:   b.CreatedAt,
+	}).Error
+}
+
+func (r *GormRepository) FindByUserID(ctx context.Context, userID uuid.UUID) ([]domain.Booking, error) {
+	var models []bookingModel
+	if err := r.db.WithContext(ctx).Where("user_id = ?", userID).Order("created_at DESC").Find(&models).Error; err != nil {
+		return nil, err
+	}
+	bookings := make([]domain.Booking, 0, len(models))
+	for _, m := range models {
+		bookings = append(bookings, m.toDomain())
+	}
+	return bookings, nil
+}
+
+
 type bookingModel struct {
 	ID          uuid.UUID `gorm:"type:uuid;primaryKey"`
 	UserID      uuid.UUID `gorm:"type:uuid;index"`

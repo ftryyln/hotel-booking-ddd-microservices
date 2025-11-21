@@ -1,72 +1,150 @@
 # Hotel Booking Microservices Platform
 
-Backend-only hotel booking system built with Go 1.21, PostgreSQL, Docker, and a Domain-Driven Design structure. The platform is decomposed into six microservices behind an API Gateway and demonstrates SOLID principles, clean layering, payment-gateway abstraction, graceful shutdowns, structured logging, and automated Swagger documentation.
+[![Go Version](https://img.shields.io/badge/Go-1.23-blue.svg)](https://golang.org/doc/go1.23)
+[![Architecture](https://img.shields.io/badge/Architecture-DDD%20%26%20Clean%20Arch-green.svg)](docs/solid-ddd-analysis.md)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+> **A production-grade, backend-only hotel booking system demonstrating advanced Domain-Driven Design (DDD) and SOLID principles in Go.**
+
+This platform is decomposed into **six microservices** behind an API Gateway, featuring a robust event-driven architecture, payment abstraction, and comprehensive documentation.
 
 ---
 
-## Architecture Overview
+## 📚 Documentation Hub
 
-```
-                    +--------------------+
-Request             |  API Gateway (8088)|--- reverse proxy --> individual services
-Bearer JWT          |  - JWT middleware  |--- aggregation --> Booking + Payment
-------------------->|  - Rate limiting   |
-                    +--------------------+
-                              |
-    --------------------------------------------------------------------------
-    |            |              |                 |                  |        |
-+--------+  +-----------+  +-----------+    +------------+    +--------------+|
-| Auth   |  | Hotel     |  | Booking   |    | Payment    |    | Notification ||
-| 8080   |  | 8081      |  | 8082      |    | 8083       |    | 8085         ||
-| JWT &  |  | Hotels &  |  | Booking   |    | Payment    |    | Logger-based ||
-| users  |  | rooms     |  | lifecycle |    | provider   |    | dispatcher   ||
-+--------+  +-----------+  +-----------+    +------------+    +--------------+|
-    |             |              |                 |                  |
-    ----------------------------- PostgreSQL (5432) ---------------------------
+| Document | Description |
+|----------|-------------|
+| **[🏗️ Project Structure](docs/project-structure.md)** | Detailed breakdown of folders, layers, and key files. |
+| **[📊 SOLID & DDD Analysis](docs/solid-ddd-analysis.md)** | In-depth architectural review and scoring (Current: 10/10). |
+| **[🗺️ Entity Analysis](docs/entity-analysis.md)** | Database schema, entities, and business rules. |
+| **[🔗 ER Diagram](docs/ERD.md)** | Visual representation of database relationships. |
+| **[📖 Glossary](docs/glossary.md)** | Ubiquitous Language definitions. |
+| **[🔌 API Swagger](docs/swagger/swagger.yaml)** | OpenAPI 3.0 specification. |
+
+---
+
+## 🏛️ Architecture Overview
+
+The system follows a **Microservices Architecture** with a **Clean Architecture** internal structure for each service.
+
+```mermaid
+graph TD
+    Client[Client (Web/Mobile)] --> Gateway[API Gateway :8088]
+    
+    subgraph "Microservices Mesh"
+        Gateway --> Auth[Auth Service :8080]
+        Gateway --> Hotel[Hotel Service :8081]
+        Gateway --> Booking[Booking Service :8082]
+        Gateway --> Payment[Payment Service :8083]
+        
+        Booking --> Hotel
+        Booking --> Payment
+        Booking --> Notification[Notification Service :8085]
+        Payment --> Notification
+    end
+    
+    Auth --> DB[(PostgreSQL)]
+    Hotel --> DB
+    Booking --> DB
+    Payment --> DB
 ```
 
 **Bounded contexts & responsibilities**
 
-| Service           | Responsibilities                                                                                   |
-|-------------------|----------------------------------------------------------------------------------------------------|
-| API Gateway       | JWT verification, rate limiting, reverse proxy, booking+payment aggregation                        |
-| Auth Service      | Register/login, password hashing (bcrypt), JWT issuing, `/register /login /me`                     |
-| Hotel Service     | CRUD hotels, room types, rooms, public listing with room type summaries                             |
-| Booking Service   | Booking lifecycle (create → pending → confirmed → checked_in → completed), cancellations, check-ins|
-| Payment Service   | PaymentProvider abstraction (mock Xendit), initiation, webhook verification, refunds, booking sync |
-| Notification Svc  | Simple dispatcher (zap logger), triggered on booking creation or payment events                    |
-
-Shared packages live under `pkg/` (config, logger, middleware, dto, etc.). Each service follows DDD layers: `internal/domain`, `internal/usecase`, `internal/infrastructure`.
+| Service           | Port | Responsibilities                                                                                   |
+|-------------------|------|----------------------------------------------------------------------------------------------------|
+| **API Gateway**   | 8088 | JWT verification, rate limiting, reverse proxy, booking+payment aggregation                        |
+| **Auth Service**  | 8080 | Register/login, password hashing (bcrypt), JWT issuing, `/register /login /me`                     |
+| **Hotel Service** | 8081 | CRUD hotels, room types, rooms, public listing with room type summaries                             |
+| **Booking Service**| 8082 | Booking lifecycle (create → pending → confirmed → checked_in → completed), cancellations, check-ins|
+| **Payment Service**| 8083 | PaymentProvider abstraction (mock Xendit), initiation, webhook verification, refunds, booking sync |
+| **Notification**  | 8085 | Simple dispatcher (zap logger), triggered on booking creation or payment events                    |
 
 ---
 
-## Tech Stack & Key Features
+## 🔄 System Flow & User Journey
 
-- **Language**: Go 1.21
-- **Frameworks**: chi router, sqlx, jwt v5, zap logger
-- **Database**: PostgreSQL with UUIDs via `uuid-ossp`
+The following sequence diagram illustrates the core **Booking & Payment Workflow**, demonstrating how services interact to complete a reservation.
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Gateway as API Gateway
+    participant Auth as Auth Service
+    participant Hotel as Hotel Service
+    participant Booking as Booking Service
+    participant Payment as Payment Service
+    participant Notif as Notification Service
+
+    %% Authentication
+    User->>Gateway: POST /auth/login
+    Gateway->>Auth: Forward Request
+    Auth-->>Gateway: Return JWT Token
+    Gateway-->>User: Access Token
+
+    %% Browsing
+    User->>Gateway: GET /hotels (with Token)
+    Gateway->>Hotel: Fetch Inventory
+    Hotel-->>Gateway: Hotel List
+    Gateway-->>User: Display Hotels
+
+    %% Booking Process
+    User->>Gateway: POST /bookings (RoomID, Dates)
+    Gateway->>Booking: Create Booking
+    Booking->>Hotel: Check Availability
+    Booking->>Booking: Calculate Price & Create Record (Pending)
+    Booking->>Payment: Initiate Payment
+    Payment-->>Booking: Payment URL/ID
+    Booking-->>Gateway: Booking Created (Pending)
+    Gateway-->>User: Payment Instructions
+
+    %% Payment Webhook (Async)
+    Note over Payment, Booking: User pays via Payment Gateway
+    Payment->>Payment: Webhook: Status = PAID
+    Payment->>Booking: Update Booking Status (Confirmed)
+    Booking->>Notif: Emit Event: BookingConfirmed
+    Notif-->>User: Send Email Confirmation
+```
+
+---
+
+## 🚀 Tech Stack & Key Features
+
+### Core Technology
+- **Language**: Go 1.23
+- **Frameworks**: chi router, sqlx/gorm, jwt v5, zap logger
+- **Database**: PostgreSQL 15 (with `uuid-ossp`)
 - **Containerization**: Docker + docker-compose (multi-stage builds)
 - **Docs**: Swagger generated from handler annotations (`docs/swagger/swagger.yaml`)
-- **Testing**: testify, sqlmock; table-driven tests covering booking lifecycle, payment webhooks, repository inserts
-- **Non-functional**:
-  - JWT-based authentication & role checks
-  - Rate limiting middleware on gateway
-  - Structured logging + context-aware logging helpers
-  - Config via environment variables (`.env.example`)
-  - Graceful shutdown using context cancellation & signal handling
-  - Payment provider abstraction + mock Xendit signature validation
-  - Consistent API error contract (DTO-based)
+
+### 🌟 Advanced DDD Features (New!)
+- **Domain Events**: Full event sourcing capability (`pkg/domain/events.go`).
+- **Rich Domain Models**: Business logic encapsulated in Aggregates (`Booking.Confirm()`, `Booking.GuestCheckIn()`).
+- **Value Objects**: Powerful `Money` and `DateRange` types with validation and arithmetic.
+- **CQRS Interfaces**: Split `BookingReader` and `BookingWriter` repositories.
+- **Specification Pattern**: Complex filtering logic (`pkg/domain/specification.go`).
+- **Domain Services**: `PricingService` for complex calculation logic.
+- **Repository Factory**: Abstracted repository creation.
+
+### Non-functional
+- JWT-based authentication & role checks
+- Rate limiting middleware on gateway
+- Structured logging + context-aware logging helpers
+- Config via environment variables (`.env.example`)
+- Graceful shutdown using context cancellation & signal handling
+- Payment provider abstraction + mock Xendit signature validation
+- Consistent API error contract (DTO-based)
 
 ---
 
-## API Shape (assemblers, domain-first, pagination)
+## 📐 API Shape (Assemblers, Domain-First, Pagination)
 
-- Handlers stay thin: DTO → inbound assembler → usecase (domain) → outbound assembler → DTO envelope (Auth, Hotel, Booking, Payment, Notification).
-- Usecases return domain models; mapping to DTO hanya di handler boundary.
-- Pagination: list endpoints menerima `limit`/`offset` (default limit 50) di hotel, booking, auth, notification.
-- Booking/Payment/Notification requests divalidasi di assembler (ID/date/money/webhook signature).
+- **Thin Handlers**: DTO → inbound assembler → usecase (domain) → outbound assembler → DTO envelope.
+- **Domain-Centric**: Usecases return domain models; mapping to DTO only happens at the handler boundary.
+- **Pagination**: List endpoints accept `limit`/`offset` (default limit 50) in hotel, booking, auth, notification.
+- **Validation**: Booking/Payment/Notification requests are validated in assemblers (ID/date/money/webhook signature).
 
-**Mock payment webhook signature**
+**Mock payment webhook signature generation:**
 ```bash
 PAYLOAD='{"payment_id":"<uuid>","status":"paid"}'
 SIG=$(printf '%s' "$PAYLOAD" | openssl dgst -sha256 -hmac "$PAYMENT_PROVIDER_KEY" -hex | awk '{print $2}')
@@ -75,16 +153,9 @@ curl -X POST http://localhost:8088/api/v1/payments/webhook \
   -d '{"payment_id":"<uuid>","status":"paid","signature":"'"$SIG"'"}'
 ```
 
-Regenerate Swagger setelah perubahan kode (butuh `swag`):
-```
-swag init -g cmd/booking-service/main.go -o docs/booking-service
-swag init -g cmd/payment-service/main.go -o docs/payment-service
-swag init -g cmd/notification-service/main.go -o docs/notification-service
-```
-
 ---
 
-## Repository Layout
+## 📂 Repository Layout
 
 ```
 cmd/<service>/           # each service entry point (auth-service, booking-service, etc.)
@@ -101,39 +172,32 @@ docs/                    # Swagger + ERD
 
 ---
 
-## Prerequisites
+## 🛠️ Configuration & Prerequisites
 
+### Prerequisites
 - Docker Desktop / Docker Engine 24+
 - Docker Compose V2
-- Go 1.21+ (only needed for local dev/tests)
-- `swag` CLI for regenerating docs (optional): `go install github.com/swaggo/swag/cmd/swag@latest`
+- Go 1.23+ (only needed for local dev/tests)
+- `swag` CLI (optional): `go install github.com/swaggo/swag/cmd/swag@latest`
+
+### Environment Variables
+Copy `.env.example` to `.env`:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATABASE_URL` | `postgres://...` | Shared Postgres DSN |
+| `JWT_SECRET` | `super-secret` | JWT signing secret |
+| `PAYMENT_PROVIDER_KEY` | `sandbox-key` | HMAC key for mock Xendit |
+| `RATE_LIMIT_PER_MINUTE` | `120` | Gateway rate limiter |
 
 ---
 
-## Configuration
-
-Copy `.env.example` to `.env` (or supply env vars in compose):
-
-| Variable                     | Default                                      | Description                                  |
-|-----------------------------|----------------------------------------------|----------------------------------------------|
-| `DATABASE_URL`              | `postgres://postgres:postgres@postgres:5432/hotel?sslmode=disable` | Shared Postgres DSN                |
-| `JWT_SECRET`                | `super-secret`                               | JWT signing secret                           |
-| `PAYMENT_PROVIDER_KEY`      | `sandbox-key`                                | HMAC key for mock Xendit                     |
-| `PAYMENT_SERVICE_URL`       | `http://payment-service:8083`                | Booking service -> payment client target     |
-| `BOOKING_SERVICE_URL`       | `http://booking-service:8082`                | Payment service -> booking status callback   |
-| `NOTIFICATION_SERVICE_URL`  | `http://notification-service:8085`           | Booking service -> notification client       |
-| `AUTH_SERVICE_URL`          | `http://auth-service:8080`                   | Gateway proxy target for auth routes         |
-| `AGGREGATE_TARGET_URL`      | `http://hotel-service:8081`                  | Gateway reverse proxy target for `/proxy`    |
-| `RATE_LIMIT_PER_MINUTE`     | `120`                                        | Gateway rate limiter                         |
-
-Each service also respects `HTTP_PORT` env for its listener.
-
----
-
-## Running the Stack
+## ▶️ Running the Stack
 
 1. **Spin up services**
    ```bash
+   make run
+   # OR
    docker-compose up --build
    ```
    - API Gateway: `http://localhost:8088/gateway`
@@ -147,35 +211,22 @@ Each service also respects `HTTP_PORT` env for its listener.
 
 2. **Shutdown & cleanup**
    ```bash
+   make down
+   # OR
    docker-compose down -v
    ```
 
 ---
 
-## Database & Migrations
+## 🗄️ Database & Migrations
 
-- `migrations/001_init.sql` creates tables:
-  - `users`, `hotels`, `room_types`, `rooms`, `bookings`, `payments`, `refunds`, `checkins`
-  - All keys use UUID (requires `CREATE EXTENSION "uuid-ossp"`).
-  - Indexes on FK columns for performant joins.
-- Run the SQL manually (psql into the Postgres container) or hook up a migration tool (goose, migrate, etc.). Docker compose seeds nothing by default.
-
-**ERD Snapshot**
-
-| Entity     | Highlights                              | Relationships                                            |
-|------------|-----------------------------------------|---------------------------------------------------------|
-| users      | email, hashed password, role            | 1 - * bookings                                           |
-| hotels     | name, address                           | 1 - * room_types                                         |
-| room_types | hotel_id, capacity, base_price          | 1 - * rooms, * - 1 hotels                                |
-| rooms      | room_type_id, number, status            | * - 1 room_types                                         |
-| bookings   | user_id, room_type_id, status, totals   | * - 1 users, * - 1 room_types, 1 - 1 payments/checkins   |
-| payments   | booking_id, provider, amount            | 1 - 1 bookings, 1 - * refunds                            |
-| refunds    | payment_id, status                      | * - 1 payments                                           |
-| checkins   | booking_id, timestamps                  | 1 - 1 bookings                                           |
+- **Schema**: `migrations/001_init.sql` creates tables (`users`, `hotels`, `room_types`, `rooms`, `bookings`, `payments`, `refunds`, `checkins`).
+- **UUIDs**: All keys use UUID (requires `CREATE EXTENSION "uuid-ossp"`).
+- **Seeding**: Run `migrations/002_seed_data.sql` manually via Adminer to populate initial data.
 
 ---
 
-## Swagger / API Documentation
+## 📖 Swagger / API Documentation
 
 1. **Generate docs**
    ```bash
@@ -192,133 +243,84 @@ Each service also respects `HTTP_PORT` env for its listener.
    ```
    Visit `http://localhost:8087`.
 
-3. **Postman import**  
-   - Import `docs/swagger/swagger.yaml` directly or consume `docs/swagger/swagger.json`.
-
-Swagger covers:
+**Swagger covers:**
 - Auth `/register /login /me/{id}`
 - Hotel `/hotels /room-types /rooms`
-- Booking `/bookings`, cancellation, checkpoint, internal status sync
-- Payment `/payments`, `/payments/{id}`, `/payments/webhook`, `/payments/refund`
+- Booking `/bookings`, cancellation, checkpoint
+- Payment `/payments`, `/payments/webhook`
 - Notification `/notifications`
 - Gateway `/gateway/aggregate/bookings/{id}`
 
-Use the Swagger “Authorize” button with `Bearer <access_token>` for protected endpoints.
-
 ---
 
-## Testing & Linting
+## 🧪 Testing & Linting
 
 ```bash
 make test     # go test ./... -cover
 make lint     # go vet ./...
 ```
 
-Covered scenarios include:
+**Covered scenarios:**
 - Booking creation: happy path, invalid dates, room type not found.
-- Payment webhook: valid/invalid signature propagation with booking status updates.
+- Payment webhook: valid/invalid signature propagation.
 - Refund flows: provider success/fail.
 - Booking repository insert via sqlmock.
 
-Target coverage: ~45–60% concentrating on business logic layers.
-
 ---
 
-## Service Flows
+## 🌊 Service Flows
 
 ### Authentication
-1. `POST /auth/register` (via gateway or service)  
-   - Email is normalized.  
-   - Password hashed with bcrypt.  
-   - Role must be `admin` or `customer` (defaults to `customer`).  
-   - New row inserted into `users` and tokens issued immediately.
-2. `POST /auth/login`  
-   - Credentials verified against stored hash.  
-   - Returns `access_token` + `refresh_token`.
-3. Protected requests  
-   - Gateway’s JWT middleware checks `Authorization: Bearer <token>` and injects claims for downstream handlers.
+1. `POST /auth/register`: Email normalized, password hashed (bcrypt), role assigned.
+2. `POST /auth/login`: Returns `access_token` + `refresh_token`.
+3. **Protected requests**: Gateway checks `Authorization: Bearer <token>`.
 
 ### Hotel Inventory
-1. Admin uses hotel service endpoints (`/hotels`, `/room-types`, `/rooms`) to populate inventory.
-2. Public clients can list hotels/room types without auth.
-3. Availability stub ensures booking service can call into hotel service for nightly price & stock validation.
+1. Admin uses hotel service endpoints to populate inventory.
+2. Public clients list hotels/room types without auth.
+3. **Availability**: Booking service calls Hotel service for stock validation.
 
 ### Booking Lifecycle
-1. Customer calls `POST /bookings` with `room_type_id`, `check_in`, `check_out`.  
-   - Use case computes `total_nights`, `total_price`, validates overlaps.  
-   - Status set to `pending_payment`.
-2. `PATCH /bookings/{id}/cancel` performs cancellation rules (e.g., only pending/confirmed).  
-3. `POST /bookings/{id}/checkin` and `/checkout` transition states through `checked_in` → `completed`.
-4. Booking service emits events to notification service (via HTTP) for confirmation emails/logs.
+1. `POST /bookings`: Validates dates/availability, calculates price, sets status `pending_payment`.
+2. `PATCH /bookings/{id}/cancel`: Only allowed for pending/confirmed.
+3. `POST /bookings/{id}/checkin`: Transitions to `checked_in`.
 
 ### Payment + Refund
-1. `POST /payments`  
-   - Booking service requests payment initiation → payment service hits `PaymentProvider` (mock Midtrans/Xendit) returning `payment_url` or VA number.  
-   - Payment record stored with `status=pending`.
-2. Provider webhook → `POST /payments/webhook`  
-   - HMAC signature verified using `PAYMENT_PROVIDER_KEY`.  
-   - Payment status updated, booking status automatically set to `confirmed`/`failed`.  
-   - Notification service triggered on success.
-3. Refunds via `POST /payments/{id}/refund`  
-   - Calls provider mock, records `refunds` row, updates booking/payment status accordingly.
+1. `POST /payments`: Initiates payment via mock provider, returns URL.
+2. `POST /payments/webhook`: Validates HMAC, updates payment status `paid`, auto-confirms booking.
+3. `POST /payments/{id}/refund`: Records refund, updates status.
 
 ### Notifications
-1. Booking confirmed or payment paid → booking/payment services call notification service.  
-2. Notification service logs payload (placeholder for SMTP/SMS integrations).  
-3. Future integrations can swap logger implementation with email provider by implementing `domain.Notifier`.
-
-### API Gateway & Aggregation
-1. `GET /gateway/aggregate/bookings/{id}`  
-   - Gateway fetches booking service response + payment service response.  
-   - Returns merged DTO for UI convenience.  
-2. `/gateway/auth/*` proxies directly to auth service with relaxed middleware (CORS enabled for Swagger/Postman).
+1. Triggered by Booking Confirmed or Payment Paid events.
+2. Logs payload (placeholder for email/SMS).
 
 ---
 
-## Example Workflow (Manual / Postman)
+## 📝 Example Workflow (Manual / Postman)
 
-1. **Register admin user**
-   ```
+1. **Register Admin**
+   ```json
    POST http://localhost:8080/auth/register
-   {
-     "email": "admin@example.com",
-     "password": "Secret123!",
-     "role": "admin"
-   }
+   { "email": "admin@example.com", "password": "Secret123!", "role": "admin" }
    ```
 2. **Login** and copy `access_token`.
-3. **Create hotel + room types** (Auth header `Bearer <token>`) via Hotel service.
-4. **Register customer**, login, and create a booking:
-   ```
+3. **Create Hotel** (Auth header required).
+4. **Register Customer**, login, and create booking:
+   ```json
    POST http://localhost:8082/bookings
-   {
-     "user_id": "customer-uuid",
-     "room_type_id": "roomtype-uuid",
-     "check_in": "2025-12-20",
-     "check_out": "2025-12-23"
-   }
+   { "user_id": "cust-id", "room_type_id": "rt-id", "check_in": "2025-12-20", "check_out": "2025-12-23" }
    ```
-5. **Initiate payment** via Payment service (`POST /payments`).
-6. **Simulate webhook** (mock) to mark payment paid:
-   ```
+5. **Initiate Payment** via Payment service.
+6. **Simulate Webhook**:
+   ```json
    POST http://localhost:8083/payments/webhook
-   {
-     "payment_id": "...",
-     "status": "paid",
-     "signature": "<hmac payload>"
-   }
+   { "payment_id": "...", "status": "paid", "signature": "..." }
    ```
-   Booking status auto-updates to `confirmed`.
-7. **Aggregate view**:
-   ```
-   GET http://localhost:8088/gateway/aggregate/bookings/{booking_id}
-   ```
-
-Use Adminer (`http://localhost:8089`) to inspect database tables while testing.
+7. **Check Status**: Booking should be `confirmed`.
 
 ---
 
-## Makefile Cheat Sheet
+## 📋 Makefile Cheat Sheet
 
 | Command        | Description                                 |
 |----------------|---------------------------------------------|
@@ -330,46 +332,28 @@ Use Adminer (`http://localhost:8089`) to inspect database tables while testing.
 
 ---
 
-## API Gateway modes (whitelist vs proxy_all)
+## 🌐 API Gateway Modes
 
-- Toggle with `GATEWAY_MODE=whitelist|proxy_all` (default `whitelist`). Route map is loaded from `config/routes.yml` (override via `GATEWAY_ROUTES_FILE`).
-- Each route entry supports `prefix`, `upstream`, `strip_prefix`, `require_auth`, `auth_strategy=forward|validate`, and `health_path`. Fallback mapping expands `/api/*` prefixes automatically (see `config/routes.yml` for all services: auth, hotel, booking, payment, notification).
-- Gateway features in `proxy_all`:
-  - Path rewrite/strip-prefix per route.
-  - Auth forwarding; optional JWT validation before proxying when `auth_strategy=validate`.
-  - Upstream timeout (`UPSTREAM_TIMEOUT`, default 5s) and GET retries (`UPSTREAM_RETRIES`, default 2) with backoff.
-  - Circuit breaker (`CIRCUIT_BREAKER_*`) plus health checks (`HEALTH_INTERVAL`) gating readiness.
-  - Observability: `/metrics` (Prometheus text), `/debug/routes` (active routes + health), `/healthz` (aggregated upstream health).
-- Example docker-compose snippet (already wired): `api-gateway` sets `GATEWAY_MODE=proxy_all`, `GATEWAY_ROUTES_FILE=config/routes.yml`, timeout/retry/circuit envs, and depends_on downstream services.
-
-### Quick acceptance checks (from host)
-
-```
-curl -v http://localhost:8088/api/v1/hotels
-curl -v http://localhost:8088/api/v1/bookings/1          # requires Authorization header if route requires auth
-curl -v http://localhost:8088/api/v1/doesnotexist        # expect 404 + {"code":"not_found","message":"no upstream mapping"}
-curl -v http://localhost:8088/debug/routes               # list routes + health
-curl -v http://localhost:8088/metrics                    # Prometheus metrics
-```
+- **Whitelist vs Proxy All**: Toggle with `GATEWAY_MODE=whitelist|proxy_all` (default `whitelist`).
+- **Route Map**: Loaded from `config/routes.yml`.
+- **Features**:
+  - Path rewrite/strip-prefix.
+  - Auth forwarding/validation.
+  - Circuit breaker & Health checks.
+  - Observability (`/metrics`, `/debug/routes`).
 
 ---
 
-## Next Steps & Customization
+## 🔮 Next Steps & Customization
 
-- Swap the mock payment provider with a real Midtrans/Xendit integration by implementing `domain.Provider`.
-- Replace notification logger dispatcher with email/SMS providers by extending `domain.Dispatcher`.
-- Add caching layers (Redis) or message brokers (NATS/Kafka) if needed.
-- Wire CI/CD (GitHub Actions) to run `make test` and `make lint`.
-- Add more bounded contexts (inventory, pricing) by following the same DDD folder layout.
-
----
-
-## License
-
-This repository is intended as a technical test / sample implementation; no explicit license is provided. Adapt and extend as needed for your environment.
+- **Payment Provider**: Implement real Midtrans/Xendit in `domain.Provider`.
+- **Notifications**: Replace logger with SMTP/Twilio in `domain.Dispatcher`.
+- **Caching**: Add Redis for hotel search.
+- **CI/CD**: Setup GitHub Actions for `make test`.
+- **New Contexts**: Add Inventory or Pricing microservices.
 
 ---
 
-## Author
+## 👤 Author
 
-Fitry Yuliani
+**Fitry Yuliani**

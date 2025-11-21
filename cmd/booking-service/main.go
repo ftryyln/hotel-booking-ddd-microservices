@@ -41,7 +41,12 @@ func main() {
 		log.Fatal("failed to run hotel migrations", zap.Error(err))
 	}
 
-	repo := bookingrepo.NewGormRepository(db)
+	repoFactory := bookingrepo.NewGormFactory(db)
+	repo, err := repoFactory.CreateBookingRepository(bookingrepo.TypeGorm)
+	if err != nil {
+		log.Fatal("failed to create booking repository", zap.Error(err))
+	}
+
 	hRepo := hotelrepo.NewGormRepository(db)
 	paymentClient := bookingpayment.NewHTTPGateway(cfg.PaymentServiceURL)
 	notifier := bookingnotification.NewHTTPGateway(cfg.NotificationURL)

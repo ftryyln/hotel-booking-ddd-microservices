@@ -28,7 +28,19 @@ func (d DateRange) Nights() int {
 	return int(endDateOnly(d.End).Sub(endDateOnly(d.Start)).Hours() / 24)
 }
 
+// Contains checks if a given date falls within this range.
+func (d DateRange) Contains(date time.Time) bool {
+	date = endDateOnly(date)
+	return !date.Before(endDateOnly(d.Start)) && date.Before(endDateOnly(d.End))
+}
+
+// Overlaps checks if this date range overlaps with another.
+func (d DateRange) Overlaps(other DateRange) bool {
+	return d.Start.Before(other.End) && other.Start.Before(d.End)
+}
+
 func endDateOnly(t time.Time) time.Time {
 	y, m, d := t.Date()
 	return time.Date(y, m, d, 0, 0, 0, 0, t.Location())
 }
+
