@@ -29,17 +29,17 @@ The system follows a **Microservices Architecture** with a **Clean Architecture*
 
 ```mermaid
 graph TD
-    Client[Client (Web/Mobile)] --> Gateway[API Gateway :8088]
+    Client["Client (Web/Mobile)"] --> Gateway["API Gateway :8088"]
     
     subgraph "Microservices Mesh"
-        Gateway --> Auth[Auth Service :8080]
-        Gateway --> Hotel[Hotel Service :8081]
-        Gateway --> Booking[Booking Service :8082]
-        Gateway --> Payment[Payment Service :8083]
+        Gateway --> Auth["Auth Service :8080"]
+        Gateway --> Hotel["Hotel Service :8081"]
+        Gateway --> Booking["Booking Service :8082"]
+        Gateway --> Payment["Payment Service :8083"]
         
         Booking --> Hotel
         Booking --> Payment
-        Booking --> Notification[Notification Service :8085]
+        Booking --> Notification["Notification Service :8085"]
         Payment --> Notification
     end
     
