@@ -4,7 +4,13 @@ definitions:
     properties:
       access_token:
         type: string
+      email:
+        type: string
+      id:
+        type: string
       refresh_token:
+        type: string
+      role:
         type: string
     type: object
   github_com_ftryyln_hotel-booking-microservices_pkg_dto.BookingAggregateResponse:
@@ -17,9 +23,9 @@ definitions:
   github_com_ftryyln_hotel-booking-microservices_pkg_dto.BookingRequest:
     properties:
       check_in:
-        type: string
+        $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.Date'
       check_out:
-        type: string
+        $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.Date'
       guests:
         type: integer
       room_type_id:
@@ -33,8 +39,12 @@ definitions:
         type: string
       check_out:
         type: string
+      guests:
+        type: integer
       id:
         type: string
+      payment:
+        $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.PaymentResponse'
       status:
         type: string
       total_nights:
@@ -45,6 +55,54 @@ definitions:
   github_com_ftryyln_hotel-booking-microservices_pkg_dto.CheckpointRequest:
     properties:
       action:
+        type: string
+    type: object
+  github_com_ftryyln_hotel-booking-microservices_pkg_dto.CreatedHotelResponse:
+    properties:
+      address:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      message:
+        type: string
+      name:
+        type: string
+    type: object
+  github_com_ftryyln_hotel-booking-microservices_pkg_dto.CreatedRoomResponse:
+    properties:
+      id:
+        type: string
+      message:
+        type: string
+      number:
+        type: string
+      room_type_id:
+        type: string
+      status:
+        type: string
+    type: object
+  github_com_ftryyln_hotel-booking-microservices_pkg_dto.CreatedRoomTypeResponse:
+    properties:
+      amenities:
+        type: string
+      base_price:
+        type: number
+      capacity:
+        type: integer
+      hotel_id:
+        type: string
+      id:
+        type: string
+      message:
+        type: string
+      name:
+        type: string
+    type: object
+  github_com_ftryyln_hotel-booking-microservices_pkg_dto.Date:
+    properties:
+      time.Time:
         type: string
     type: object
   github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse:
@@ -68,6 +126,8 @@ definitions:
     properties:
       address:
         type: string
+      created_at:
+        type: string
       description:
         type: string
       id:
@@ -79,6 +139,15 @@ definitions:
           $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.RoomTypeSummary'
         type: array
     type: object
+  github_com_ftryyln_hotel-booking-microservices_pkg_dto.HotelUpdateRequest:
+    properties:
+      address:
+        type: string
+      description:
+        type: string
+      name:
+        type: string
+    type: object
   github_com_ftryyln_hotel-booking-microservices_pkg_dto.LoginRequest:
     properties:
       email:
@@ -88,6 +157,19 @@ definitions:
     type: object
   github_com_ftryyln_hotel-booking-microservices_pkg_dto.NotificationRequest:
     properties:
+      message:
+        type: string
+      target:
+        type: string
+      type:
+        type: string
+    type: object
+  github_com_ftryyln_hotel-booking-microservices_pkg_dto.NotificationResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
       message:
         type: string
       target:
@@ -160,6 +242,17 @@ definitions:
       status:
         type: string
     type: object
+  github_com_ftryyln_hotel-booking-microservices_pkg_dto.RoomResponse:
+    properties:
+      id:
+        type: string
+      number:
+        type: string
+      room_type_id:
+        type: string
+      status:
+        type: string
+    type: object
   github_com_ftryyln_hotel-booking-microservices_pkg_dto.RoomTypeRequest:
     properties:
       amenities:
@@ -169,6 +262,21 @@ definitions:
       capacity:
         type: integer
       hotel_id:
+        type: string
+      name:
+        type: string
+    type: object
+  github_com_ftryyln_hotel-booking-microservices_pkg_dto.RoomTypeResponse:
+    properties:
+      amenities:
+        type: string
+      base_price:
+        type: number
+      capacity:
+        type: integer
+      hotel_id:
+        type: string
+      id:
         type: string
       name:
         type: string
@@ -184,6 +292,20 @@ definitions:
       price:
         type: number
     type: object
+  github_com_ftryyln_hotel-booking-microservices_pkg_dto.RoomUpdateRequest:
+    properties:
+      number:
+        type: string
+      status:
+        type: string
+    type: object
+  github_com_ftryyln_hotel-booking-microservices_pkg_dto.SuccessResponse:
+    properties:
+      id:
+        type: string
+      message:
+        type: string
+    type: object
   internal_infrastructure_gateway.DebugRouteResponse:
     properties:
       auth_strategy:
@@ -194,6 +316,13 @@ definitions:
         type: string
       require_auth:
         type: boolean
+      status:
+        $ref: '#/definitions/internal_infrastructure_gateway.UpstreamStatusDoc'
+      upstream:
+        type: string
+    type: object
+  internal_infrastructure_gateway.HealthResponse:
+    properties:
       status:
         $ref: '#/definitions/internal_infrastructure_gateway.UpstreamStatusDoc'
       upstream:
@@ -218,6 +347,15 @@ definitions:
       unhealthy_since:
         type: string
       window_started_at:
+        type: string
+    type: object
+  paymenthttp.webhookResponse:
+    properties:
+      message:
+        type: string
+      payment_id:
+        type: string
+      status:
         type: string
     type: object
 host: localhost:8088
@@ -316,7 +454,83 @@ paths:
       summary: Register user
       tags:
       - Auth
+  /auth/users:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ProfileResponse'
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List users (admin)
+      tags:
+      - Auth
+  /auth/users/{id}:
+    get:
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ProfileResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get user detail
+      tags:
+      - Auth
   /bookings:
+    get:
+      parameters:
+      - description: pagination limit (default 50)
+        in: query
+        name: limit
+        type: integer
+      - description: pagination offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.BookingResponse'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List bookings
+      tags:
+      - Bookings
     post:
       consumes:
       - application/json
@@ -385,9 +599,7 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.BookingResponse'
         "400":
           description: Bad Request
           schema:
@@ -423,9 +635,7 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.BookingResponse'
         "400":
           description: Bad Request
           schema:
@@ -436,6 +646,35 @@ paths:
       tags:
       - Bookings
   /bookings/{id}/status:
+    get:
+      parameters:
+      - description: Booking ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get booking status
+      tags:
+      - Bookings
     post:
       consumes:
       - application/json
@@ -459,14 +698,18 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.BookingResponse'
         "400":
           description: Bad Request
           schema:
             $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse'
-      summary: Update booking status (internal)
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Change booking status (admin)
       tags:
       - Bookings
   /debug/routes:
@@ -507,8 +750,37 @@ paths:
       summary: Aggregate booking data
       tags:
       - Gateway
+  /healthz:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_infrastructure_gateway.HealthResponse'
+            type: array
+        "503":
+          description: Service Unavailable
+          schema:
+            items:
+              $ref: '#/definitions/internal_infrastructure_gateway.HealthResponse'
+            type: array
+      summary: Aggregated upstream health
+      tags:
+      - Diagnostics
   /hotels:
     get:
+      parameters:
+      - description: pagination limit (default 50)
+        in: query
+        name: limit
+        type: integer
+      - description: pagination offset
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -541,9 +813,7 @@ paths:
         "201":
           description: Created
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.CreatedHotelResponse'
         "400":
           description: Bad Request
           schema:
@@ -551,6 +821,86 @@ paths:
       security:
       - BearerAuth: []
       summary: Create hotel
+      tags:
+      - Hotels
+  /hotels/{id}:
+    delete:
+      parameters:
+      - description: Hotel ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.SuccessResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete hotel
+      tags:
+      - Hotels
+    get:
+      parameters:
+      - description: Hotel ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.HotelResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse'
+      summary: Get hotel detail
+      tags:
+      - Hotels
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Hotel ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Hotel update payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.HotelUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.HotelResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update hotel
       tags:
       - Hotels
   /metrics:
@@ -566,6 +916,28 @@ paths:
       tags:
       - Diagnostics
   /notifications:
+    get:
+      parameters:
+      - description: pagination limit (default 50)
+        in: query
+        name: limit
+        type: integer
+      - description: pagination offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.NotificationResponse'
+            type: array
+      summary: List notifications (in-memory)
+      tags:
+      - Notifications
     post:
       consumes:
       - application/json
@@ -582,14 +954,34 @@ paths:
         "202":
           description: Accepted
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.NotificationResponse'
         "400":
           description: Bad Request
           schema:
             $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse'
       summary: Send notification
+      tags:
+      - Notifications
+  /notifications/{id}:
+    get:
+      parameters:
+      - description: Notification ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.NotificationResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse'
+      summary: Get notification by ID
       tags:
       - Notifications
   /payments:
@@ -644,7 +1036,35 @@ paths:
             $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Get payment
+      summary: Get payment by ID
+      tags:
+      - Payments
+  /payments/by-booking/{booking_id}:
+    get:
+      parameters:
+      - description: Booking ID
+        in: path
+        name: booking_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.PaymentResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get payment by booking ID
       tags:
       - Payments
   /payments/refund:
@@ -684,9 +1104,7 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/paymenthttp.webhookResponse'
         "400":
           description: Bad Request
           schema:
@@ -695,6 +1113,28 @@ paths:
       tags:
       - Payments
   /room-types:
+    get:
+      parameters:
+      - description: pagination limit (default 50)
+        in: query
+        name: limit
+        type: integer
+      - description: pagination offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.RoomTypeResponse'
+            type: array
+      summary: List room types
+      tags:
+      - Hotels
     post:
       consumes:
       - application/json
@@ -711,9 +1151,7 @@ paths:
         "201":
           description: Created
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.CreatedRoomTypeResponse'
         "400":
           description: Bad Request
           schema:
@@ -724,6 +1162,28 @@ paths:
       tags:
       - Hotels
   /rooms:
+    get:
+      parameters:
+      - description: pagination limit (default 50)
+        in: query
+        name: limit
+        type: integer
+      - description: pagination offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.RoomResponse'
+            type: array
+      summary: List rooms
+      tags:
+      - Hotels
     post:
       consumes:
       - application/json
@@ -740,9 +1200,7 @@ paths:
         "201":
           description: Created
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.CreatedRoomResponse'
         "400":
           description: Bad Request
           schema:
@@ -750,6 +1208,86 @@ paths:
       security:
       - BearerAuth: []
       summary: Create room
+      tags:
+      - Hotels
+  /rooms/{id}:
+    delete:
+      parameters:
+      - description: Room ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.SuccessResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete room
+      tags:
+      - Hotels
+    get:
+      parameters:
+      - description: Room ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.RoomResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse'
+      summary: Get room by ID
+      tags:
+      - Hotels
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Room ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Room update payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.RoomUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.RoomResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update room
       tags:
       - Hotels
 schemes:

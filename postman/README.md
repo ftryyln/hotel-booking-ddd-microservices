@@ -1,7 +1,76 @@
 # Postman Collection - Hotel Booking Microservices
 
 ## 📋 Overview
-This Postman collection contains all 27 API endpoints for the Hotel Booking Microservices system, organized into 8 logical folders for easy testing.
+This Postman collection contains all 42 API endpoints for the Hotel Booking Microservices system, organized into 8 logical folders for easy testing.
+
+## 🚀 Quick Start
+
+### 1. Import Collection
+1. Open Postman
+2. Click **Import** button
+3. Select `Hotel-Booking-Microservices.postman_collection.json`
+4. Collection will be imported with all endpoints and variables
+
+### 2. Setup Environment
+The collection uses **Collection Variables** for dynamic data:
+- `base_url`: http://localhost:8088/api/v1
+- `access_token`: Auto-populated after customer login
+- `admin_token`: Auto-populated after admin login
+- `user_id`, `hotel_id`, `room_id`, `booking_id`, `payment_id`: Auto-populated from responses
+
+### 3. Run the Flow
+
+#### **Recommended Testing Flow:**
+
+1. **Authentication** (Folder 1)
+   - Run "Register Admin" → Creates admin account
+   - Run "Login Admin" → Gets admin token (auto-saved)
+   - Run "Register Customer" → Creates customer account
+   - Run "Login Customer" → Gets customer token (auto-saved)
+
+2. **Setup Hotel Data** (Folders 2-4, use Admin token)
+   - Run "Create Hotel" → hotel_id auto-saved
+   - Run "Create Room Type" → room_type_id auto-saved
+   - Run "Create Room" → room_id auto-saved
+   - Test "Update Hotel" 
+   - Test "Update Room" 
+
+3. **Booking Flow** (Folder 5, use Customer token)
+   - Run "Create Booking" → booking_id auto-saved
+   - Run "Get Payment by Booking ID" → payment_id auto-saved
+   - Run "Payment Webhook" → Simulates payment confirmation
+   - Run "Check-in Booking" → Changes status to checked_in
+
+4. **Additional Features**
+   - Test "Refund Payment" (Admin)
+   - Test "List Notifications"
+   - Test "Get Booking Aggregate"
+
+## 📁 Collection Structure
+
+### 1. Authentication (3 endpoints)
+- Register Customer
+- Register Admin
+- Login Customer
+- Login Admin
+- Get User Profile
+
+### 2. Hotel Management (5 endpoints)
+- List Hotels (Public)
+- Get Hotel by ID (Public)
+- Create Hotel (Admin) 🔒
+- **Update Hotel (Admin) 🔒 **
+- **Delete Hotel (Admin) 🔒 **
+
+### 3. Room Type Management (2 endpoints)
+- List Room Types (Public)
+- Create Room Type (Admin) 🔒
+
+### 4. Room Management (5 endpoints)
+# Postman Collection - Hotel Booking Microservices
+
+## 📋 Overview
+This Postman collection contains all 42 API endpoints for the Hotel Booking Microservices system, organized into 8 logical folders for easy testing.
 
 ## 🚀 Quick Start
 
@@ -73,15 +142,17 @@ The collection uses **Collection Variables** for dynamic data:
 - **Update Room (Admin) 🔒 **
 - **Delete Room (Admin) 🔒 **
 
-### 5. Booking Management (5 endpoints)
-- Create Booking 🔒
-- List Bookings 🔒
-- Get Booking by ID 🔒
-- Check-in Booking 🔒
-- Cancel Booking 🔒
+### 5. Booking Management (7 endpoints)
+- Create Booking
+- List Bookings
+- Get Booking by ID
+- Booking Checkpoint (Check-in)
+- Cancel Booking
+- Check Booking Status
+- Change Booking Status
 
 ### 6. Payment Management (3 endpoints)
-- Get Payment by Booking ID 🔒
+- Get Payment by Booking ID
 - Payment Webhook (Xendit Mock)
 - Refund Payment (Admin) 🔒
 
@@ -91,9 +162,19 @@ The collection uses **Collection Variables** for dynamic data:
 - Get Notification by ID 🔒
 
 ### 8. Gateway Aggregation (1 endpoint)
-- Get Booking Aggregate 🔒
+- Get Booking Aggregate
 
-**Total: 27 Endpoints**
+### 9. Diagnostics (8 endpoints)
+- API Gateway Health
+- API Gateway Metrics
+- API Gateway Debug Routes
+- Auth Service Health
+- Hotel Service Health
+- Booking Service Health
+- Payment Service Health
+- Notification Service Health
+
+**Total: 42 Endpoints**
 
 ## 🔐 Authentication
 
@@ -103,6 +184,8 @@ The collection uses **Collection Variables** for dynamic data:
 - List Room Types
 - List Rooms
 - Get Room by ID
+- All Diagnostic Health Checks
+- Payment Webhook
 
 ### Customer Endpoints (Requires `access_token`)
 - All Booking operations
@@ -114,6 +197,7 @@ The collection uses **Collection Variables** for dynamic data:
 - Create Room Type
 - Create/Update/Delete Room
 - Refund Payment
+- Change Booking Status (Manual)
 
 ## 🎯 Auto-Variable Extraction
 
@@ -137,6 +221,8 @@ All newly implemented CRUD endpoints are marked with ****:
 - Get Room by ID
 - Update Room (Supports partial updates)
 - Delete Room (Soft Delete)
+- Diagnostics (Health Checks, Metrics, Debug)
+- Check/Change Booking Status
 
 ## 🔄 Auto-Checkout Feature
 
@@ -154,6 +240,8 @@ The system includes a **CronJob** that runs daily at 10:00 AM to automatically:
 3. **Admin vs Customer**: Switch between tokens by changing the Authorization header
 4. **Soft Delete**: Deleted hotels/rooms are not permanently removed (soft delete)
 5. **Payment Webhook**: In production, this would be called by Xendit automatically
+6. **Diagnostics**: Use health checks to verify service availability
+7. **Create Booking**: Requires `user_id` (auto-saved from login) and `guests` count.
 
 ## 📝 Sample Test Scenario
 
@@ -165,8 +253,9 @@ The system includes a **CronJob** that runs daily at 10:00 AM to automatically:
 5. Register Customer → Login Customer
 6. Create Booking (Dec 15-20, 2025)
 7. Simulate Payment via Webhook
-8. Check-in Booking
-9. (Wait for auto-checkout at 10:00 AM on Dec 20)
+8. Check-in Booking (Checkpoint)
+9. Check Booking Status (Verify check-in)
+10. (Wait for auto-checkout at 10:00 AM on Dec 20)
 ```
 
 ## 🐛 Troubleshooting
@@ -181,7 +270,7 @@ The system includes a **CronJob** that runs daily at 10:00 AM to automatically:
 
 **400 Bad Request**
 - Check request body format
-- Verify required fields are present
+- Verify required fields are present (e.g., user_id in booking)
 
 ## 📚 Additional Resources
 
@@ -193,5 +282,5 @@ The system includes a **CronJob** that runs daily at 10:00 AM to automatically:
 ---
 
 **Created for**: Hotel Booking Microservices Tech Test  
-**Total Endpoints**: 27  
-**New Features**: 5 CRUD endpoints + Auto-Checkout CronJob
+**Total Endpoints**: 42  
+**New Features**: 5 CRUD endpoints + Auto-Checkout CronJob + Diagnostics

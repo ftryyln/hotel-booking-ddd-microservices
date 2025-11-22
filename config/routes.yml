@@ -12,16 +12,16 @@ routes:
     upstream: http://hotel-service:8081
     strip_prefix: true
     rewrite: /room-types
-    require_auth: true
-    auth_strategy: validate
+    require_auth: false
+    auth_strategy: forward
     health_path: /healthz
   - name: rooms
     prefix: /api/v1/rooms
     upstream: http://hotel-service:8081
     strip_prefix: true
     rewrite: /rooms
-    require_auth: true
-    auth_strategy: validate
+    require_auth: false
+    auth_strategy: forward
     health_path: /healthz
   - name: bookings
     prefix: /api/v1/bookings
@@ -44,8 +44,8 @@ routes:
     upstream: http://payment-service:8083
     strip_prefix: true
     rewrite: /payments
-    require_auth: true
-    auth_strategy: validate
+    require_auth: false
+    auth_strategy: forward
     health_path: /healthz
   - name: notifications
     prefix: /api/v1/notifications

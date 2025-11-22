@@ -6,3 +6,9 @@ type ErrorResponse struct {
 	Message string `json:"message"`
 	Details any    `json:"details,omitempty"`
 }
+
+// SuccessResponse is a generic success payload.
+type SuccessResponse struct {
+	ID      string `json:"id,omitempty"`
+	Message string `json:"message"`
+}

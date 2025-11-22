@@ -122,6 +122,7 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 // @Produce json
 // @Success 200 {array} dto.ProfileResponse
 // @Failure 403 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
 // @Security BearerAuth
 // @Router /auth/users [get]
 func (h *Handler) listUsers(w http.ResponseWriter, r *http.Request) {

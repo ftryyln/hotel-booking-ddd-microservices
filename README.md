@@ -201,6 +201,18 @@ GET /auth/me/{user_id}
 Authorization: Bearer {token}
 ```
 
+#### Admin: List Users
+```http
+GET /auth/users
+Authorization: Bearer {admin_token}
+```
+
+#### Admin: Get User Detail
+```http
+GET /auth/users/{id}
+Authorization: Bearer {admin_token}
+```
+
 ---
 
 ### Hotel Management Endpoints
@@ -361,9 +373,15 @@ Authorization: Bearer {token}
 
 ### Payment Endpoints
 
+#### Admin: Get Payment by ID
+```http
+GET /payments/{payment_id}
+Authorization: Bearer {admin_token}
+```
+
 #### 21. Get Payment by Booking ID 🔒
 ```http
-GET /payments/booking/{booking_id}
+GET /payments/by-booking/{booking_id}
 Authorization: Bearer {token}
 ```
 

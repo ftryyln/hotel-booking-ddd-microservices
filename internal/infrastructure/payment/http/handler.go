@@ -8,8 +8,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
-	"github.com/ftryyln/hotel-booking-microservices/internal/usecase/payment/assembler"
 	"github.com/ftryyln/hotel-booking-microservices/internal/usecase/payment"
+	"github.com/ftryyln/hotel-booking-microservices/internal/usecase/payment/assembler"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/dto"
 	pkgErrors "github.com/ftryyln/hotel-booking-microservices/pkg/errors"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/utils"
@@ -138,7 +138,7 @@ func (h *Handler) refund(w http.ResponseWriter, r *http.Request) {
 	utils.Respond(w, http.StatusOK, "refund created", resource)
 }
 
-// @Summary Get payment
+// @Summary Get payment by ID
 // @Tags Payments
 // @Produce json
 // @Param id path string true "Payment ID"

@@ -8,9 +8,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	domain "github.com/ftryyln/hotel-booking-microservices/internal/domain/booking"
 	"github.com/ftryyln/hotel-booking-microservices/internal/usecase/booking"
 	"github.com/ftryyln/hotel-booking-microservices/internal/usecase/booking/assembler"
-	domain "github.com/ftryyln/hotel-booking-microservices/internal/domain/booking"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/dto"
 	pkgErrors "github.com/ftryyln/hotel-booking-microservices/pkg/errors"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/query"
@@ -207,7 +207,7 @@ func (h *Handler) checkpoint(w http.ResponseWriter, r *http.Request) {
 	utils.Respond(w, http.StatusOK, "status updated", resource)
 }
 
-// @Summary Update booking status (internal)
+// @Summary Change booking status (admin)
 // @Tags Bookings
 // @Accept json
 // @Produce json
@@ -215,7 +215,9 @@ func (h *Handler) checkpoint(w http.ResponseWriter, r *http.Request) {
 // @Param request body map[string]string true "Status payload"
 // @Success 200 {object} dto.BookingResponse
 // @Failure 400 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
 // @Router /bookings/{id}/status [post]
+// @Security BearerAuth
 func (h *Handler) updateStatus(w http.ResponseWriter, r *http.Request) {
 	bookingID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {

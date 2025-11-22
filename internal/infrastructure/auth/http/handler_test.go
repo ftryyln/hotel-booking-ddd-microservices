@@ -1,4 +1,4 @@
-package authhttp_test
+package authhttp
 
 import (
 	"context"
@@ -12,10 +12,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
-	auth "github.com/ftryyln/hotel-booking-microservices/internal/usecase/auth"
 	domain "github.com/ftryyln/hotel-booking-microservices/internal/domain/auth"
-	authhttp "github.com/ftryyln/hotel-booking-microservices/internal/infrastructure/auth/http"
+	auth "github.com/ftryyln/hotel-booking-microservices/internal/usecase/auth"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/dto"
+	"github.com/ftryyln/hotel-booking-microservices/pkg/middleware"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/query"
 )
 
@@ -66,7 +66,7 @@ func (i *issuerStub) Generate(ctx context.Context, user domain.User) (string, st
 func TestAuthHandlerRegister(t *testing.T) {
 	svc := auth.NewService(&authRepoStub{}, &issuerStub{})
 	r := chi.NewRouter()
-	h := authhttp.NewHandler(svc, "secret")
+	h := NewHandler(svc, "secret")
 	r.Mount("/auth", h.Routes())
 
 	req := httptest.NewRequest(http.MethodPost, "/auth/register", strings.NewReader(`{"email":"a@b.com","password":"x","role":"customer"}`))
@@ -77,4 +77,54 @@ func TestAuthHandlerRegister(t *testing.T) {
 
 func TestAuthHandlerListUsersParsesPagination(t *testing.T) {
 	// list /users is protected by JWT; handler pagination is covered indirectly via service tests.
+}
+
+func TestAuthHandler_ListUsers_AdminRole(t *testing.T) {
+	admin := domain.User{ID: uuid.New(), Email: "admin@example.com", Role: "admin"}
+	repo := &authRepoStub{users: map[string]domain.User{"admin@example.com": admin}}
+	svc := auth.NewService(repo, &issuerStub{})
+	h := NewHandler(svc, "secret")
+
+	req := httptest.NewRequest(http.MethodGet, "/auth/users", nil)
+	req = req.WithContext(context.WithValue(req.Context(), middleware.AuthContextKey, &middleware.Claims{UserID: admin.ID.String(), Role: "admin"}))
+	rec := httptest.NewRecorder()
+
+	r := chi.NewRouter()
+	r.Get("/auth/users", h.listUsers)
+	r.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+}
+
+func TestAuthHandler_ListUsers_ForbiddenForNonAdmin(t *testing.T) {
+	repo := &authRepoStub{users: map[string]domain.User{}}
+	svc := auth.NewService(repo, &issuerStub{})
+	h := NewHandler(svc, "secret")
+
+	req := httptest.NewRequest(http.MethodGet, "/auth/users", nil)
+	req = req.WithContext(context.WithValue(req.Context(), middleware.AuthContextKey, &middleware.Claims{UserID: uuid.NewString(), Role: "customer"}))
+	rec := httptest.NewRecorder()
+
+	r := chi.NewRouter()
+	r.Get("/auth/users", h.listUsers)
+	r.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusForbidden, rec.Code)
+}
+
+func TestAuthHandler_GetUser_NotFound(t *testing.T) {
+	repo := &authRepoStub{users: map[string]domain.User{}}
+	svc := auth.NewService(repo, &issuerStub{})
+	h := NewHandler(svc, "secret")
+
+	id := uuid.New()
+	req := httptest.NewRequest(http.MethodGet, "/auth/users/"+id.String(), nil)
+	req = req.WithContext(context.WithValue(req.Context(), middleware.AuthContextKey, &middleware.Claims{UserID: uuid.NewString(), Role: "admin"}))
+	rec := httptest.NewRecorder()
+
+	r := chi.NewRouter()
+	r.Get("/auth/users/{id}", h.getUser)
+	r.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusNotFound, rec.Code)
 }

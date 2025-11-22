@@ -153,7 +153,130 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/users": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "List users (admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ProfileResponse"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/users/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Get user detail",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ProfileResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/bookings": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Bookings"
+                ],
+                "summary": "List bookings",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "pagination limit (default 50)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "pagination offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.BookingResponse"
+                            }
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
@@ -269,10 +392,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.BookingResponse"
                         }
                     },
                     "400": {
@@ -329,10 +449,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.BookingResponse"
                         }
                     },
                     "400": {
@@ -345,7 +462,58 @@ const docTemplate = `{
             }
         },
         "/bookings/{id}/status": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Bookings"
+                ],
+                "summary": "Get booking status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Booking ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "consumes": [
                     "application/json"
                 ],
@@ -355,7 +523,7 @@ const docTemplate = `{
                 "tags": [
                     "Bookings"
                 ],
-                "summary": "Update booking status (internal)",
+                "summary": "Change booking status (admin)",
                 "parameters": [
                     {
                         "type": "string",
@@ -381,14 +549,17 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.BookingResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse"
                         }
@@ -457,6 +628,37 @@ const docTemplate = `{
                 }
             }
         },
+        "/healthz": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Diagnostics"
+                ],
+                "summary": "Aggregated upstream health",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/internal_infrastructure_gateway.HealthResponse"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/internal_infrastructure_gateway.HealthResponse"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/hotels": {
             "get": {
                 "produces": [
@@ -466,6 +668,20 @@ const docTemplate = `{
                     "Hotels"
                 ],
                 "summary": "List hotels",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "pagination limit (default 50)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "pagination offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -515,14 +731,137 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.CreatedHotelResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/hotels/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Hotels"
+                ],
+                "summary": "Get hotel detail",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Hotel ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.HotelResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Hotels"
+                ],
+                "summary": "Update hotel",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Hotel ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Hotel update payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.HotelUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.HotelResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Hotels"
+                ],
+                "summary": "Delete hotel",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Hotel ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.SuccessResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse"
                         }
@@ -550,6 +889,40 @@ const docTemplate = `{
             }
         },
         "/notifications": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "List notifications (in-memory)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "pagination limit (default 50)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "pagination offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.NotificationResponse"
+                            }
+                        }
+                    }
+                }
+            },
             "post": {
                 "consumes": [
                     "application/json"
@@ -576,14 +949,45 @@ const docTemplate = `{
                     "202": {
                         "description": "Accepted",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.NotificationResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Get notification by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Notification ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.NotificationResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse"
                         }
@@ -628,6 +1032,51 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/payments/by-booking/{booking_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Payments"
+                ],
+                "summary": "Get payment by booking ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Booking ID",
+                        "name": "booking_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.PaymentResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse"
                         }
@@ -695,10 +1144,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/paymenthttp.webhookResponse"
                         }
                     },
                     "400": {
@@ -723,7 +1169,7 @@ const docTemplate = `{
                 "tags": [
                     "Payments"
                 ],
-                "summary": "Get payment",
+                "summary": "Get payment by ID",
                 "parameters": [
                     {
                         "type": "string",
@@ -756,6 +1202,40 @@ const docTemplate = `{
             }
         },
         "/room-types": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Hotels"
+                ],
+                "summary": "List room types",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "pagination limit (default 50)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "pagination offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.RoomTypeResponse"
+                            }
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
@@ -787,10 +1267,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.CreatedRoomTypeResponse"
                         }
                     },
                     "400": {
@@ -803,6 +1280,40 @@ const docTemplate = `{
             }
         },
         "/rooms": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Hotels"
+                ],
+                "summary": "List rooms",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "pagination limit (default 50)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "pagination offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.RoomResponse"
+                            }
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
@@ -834,14 +1345,137 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.CreatedRoomResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/rooms/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Hotels"
+                ],
+                "summary": "Get room by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Room ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.RoomResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Hotels"
+                ],
+                "summary": "Update room",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Room ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Room update payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.RoomUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.RoomResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Hotels"
+                ],
+                "summary": "Delete room",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Room ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.SuccessResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.ErrorResponse"
                         }
@@ -857,7 +1491,16 @@ const docTemplate = `{
                 "access_token": {
                     "type": "string"
                 },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
                 "refresh_token": {
+                    "type": "string"
+                },
+                "role": {
                     "type": "string"
                 }
             }
@@ -877,10 +1520,10 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "check_in": {
-                    "type": "string"
+                    "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.Date"
                 },
                 "check_out": {
-                    "type": "string"
+                    "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.Date"
                 },
                 "guests": {
                     "type": "integer"
@@ -902,8 +1545,14 @@ const docTemplate = `{
                 "check_out": {
                     "type": "string"
                 },
+                "guests": {
+                    "type": "integer"
+                },
                 "id": {
                     "type": "string"
+                },
+                "payment": {
+                    "$ref": "#/definitions/github_com_ftryyln_hotel-booking-microservices_pkg_dto.PaymentResponse"
                 },
                 "status": {
                     "type": "string"
@@ -920,6 +1569,80 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "action": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_ftryyln_hotel-booking-microservices_pkg_dto.CreatedHotelResponse": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_ftryyln_hotel-booking-microservices_pkg_dto.CreatedRoomResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "number": {
+                    "type": "string"
+                },
+                "room_type_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_ftryyln_hotel-booking-microservices_pkg_dto.CreatedRoomTypeResponse": {
+            "type": "object",
+            "properties": {
+                "amenities": {
+                    "type": "string"
+                },
+                "base_price": {
+                    "type": "number"
+                },
+                "capacity": {
+                    "type": "integer"
+                },
+                "hotel_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_ftryyln_hotel-booking-microservices_pkg_dto.Date": {
+            "type": "object",
+            "properties": {
+                "time.Time": {
                     "type": "string"
                 }
             }
@@ -956,6 +1679,9 @@ const docTemplate = `{
                 "address": {
                     "type": "string"
                 },
+                "created_at": {
+                    "type": "string"
+                },
                 "description": {
                     "type": "string"
                 },
@@ -973,6 +1699,20 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_ftryyln_hotel-booking-microservices_pkg_dto.HotelUpdateRequest": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_ftryyln_hotel-booking-microservices_pkg_dto.LoginRequest": {
             "type": "object",
             "properties": {
@@ -987,6 +1727,26 @@ const docTemplate = `{
         "github_com_ftryyln_hotel-booking-microservices_pkg_dto.NotificationRequest": {
             "type": "object",
             "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "target": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_ftryyln_hotel-booking-microservices_pkg_dto.NotificationResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
                 "message": {
                     "type": "string"
                 },
@@ -1099,6 +1859,23 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_ftryyln_hotel-booking-microservices_pkg_dto.RoomResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "number": {
+                    "type": "string"
+                },
+                "room_type_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_ftryyln_hotel-booking-microservices_pkg_dto.RoomTypeRequest": {
             "type": "object",
             "properties": {
@@ -1112,6 +1889,29 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "hotel_id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_ftryyln_hotel-booking-microservices_pkg_dto.RoomTypeResponse": {
+            "type": "object",
+            "properties": {
+                "amenities": {
+                    "type": "string"
+                },
+                "base_price": {
+                    "type": "number"
+                },
+                "capacity": {
+                    "type": "integer"
+                },
+                "hotel_id": {
+                    "type": "string"
+                },
+                "id": {
                     "type": "string"
                 },
                 "name": {
@@ -1136,6 +1936,28 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_ftryyln_hotel-booking-microservices_pkg_dto.RoomUpdateRequest": {
+            "type": "object",
+            "properties": {
+                "number": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_ftryyln_hotel-booking-microservices_pkg_dto.SuccessResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_infrastructure_gateway.DebugRouteResponse": {
             "type": "object",
             "properties": {
@@ -1151,6 +1973,17 @@ const docTemplate = `{
                 "require_auth": {
                     "type": "boolean"
                 },
+                "status": {
+                    "$ref": "#/definitions/internal_infrastructure_gateway.UpstreamStatusDoc"
+                },
+                "upstream": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_infrastructure_gateway.HealthResponse": {
+            "type": "object",
+            "properties": {
                 "status": {
                     "$ref": "#/definitions/internal_infrastructure_gateway.UpstreamStatusDoc"
                 },
@@ -1187,6 +2020,20 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "window_started_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "paymenthttp.webhookResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "payment_id": {
+                    "type": "string"
+                },
+                "status": {
                     "type": "string"
                 }
             }

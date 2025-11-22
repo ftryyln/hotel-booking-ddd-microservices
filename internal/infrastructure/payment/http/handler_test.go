@@ -33,6 +33,21 @@ func TestPaymentHandler_GetPayment(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 }
 
+func TestPaymentHandler_GetPayment_NotFound(t *testing.T) {
+	repo := &paymentRepoStub{store: map[uuid.UUID]domain.Payment{}}
+	svc := paymentuc.NewService(repo, &providerStub{}, &bookingUpdaterStub{})
+	h := paymenthttp.NewHandler(svc)
+
+	r := chi.NewRouter()
+	r.Mount("/", h.Routes())
+
+	req := httptest.NewRequest(http.MethodGet, "/payments/"+uuid.NewString(), nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusNotFound, rec.Code)
+}
+
 type paymentRepoStub struct {
 	store map[uuid.UUID]domain.Payment
 }

@@ -118,7 +118,11 @@ func (s *Service) Refund(ctx context.Context, cmd assembler.RefundCommand) (asse
 
 // GetPayment fetches payment by ID.
 func (s *Service) GetPayment(ctx context.Context, id uuid.UUID) (domain.Payment, error) {
-	return s.repo.FindByID(ctx, id)
+	pay, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return domain.Payment{}, pkgErrors.New("not_found", "payment not found")
+	}
+	return pay, nil
 }
 
 // GetByBooking returns payment for a given booking.

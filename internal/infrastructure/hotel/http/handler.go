@@ -283,7 +283,10 @@ func (h *Handler) deleteHotel(w http.ResponseWriter, r *http.Request) {
 		writeError(w, pkgErrors.FromError(err))
 		return
 	}
-	utils.Respond(w, http.StatusOK, "hotel deleted", map[string]string{"id": idParam})
+	utils.Respond(w, http.StatusOK, "hotel deleted", dto.SuccessResponse{
+		ID:      idParam,
+		Message: "hotel deleted",
+	})
 }
 
 // @Summary Get room by ID
@@ -363,7 +366,10 @@ func (h *Handler) deleteRoom(w http.ResponseWriter, r *http.Request) {
 		writeError(w, pkgErrors.FromError(err))
 		return
 	}
-	utils.Respond(w, http.StatusOK, "room deleted", map[string]string{"id": idParam})
+	utils.Respond(w, http.StatusOK, "room deleted", dto.SuccessResponse{
+		ID:      idParam,
+		Message: "room deleted",
+	})
 }
 
 func writeJSON(w http.ResponseWriter, status int, body any) {

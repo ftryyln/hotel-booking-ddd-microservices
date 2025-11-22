@@ -60,6 +60,11 @@
             "key": "payment_id",
             "value": "",
             "type": "string"
+        },
+        {
+            "key": "notification_id",
+            "value": "",
+            "type": "string"
         }
     ],
     "item": [
@@ -267,6 +272,95 @@
                         "description": "Get user profile by ID (requires authentication)"
                     },
                     "response": []
+                },
+                {
+                    "name": "List Users (Admin)",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/auth/users",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "users"
+                            ]
+                        },
+                        "description": "List all users (admin only)"
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "if (pm.response.code === 200) {",
+                                    "    const json = pm.response.json();",
+                                    "    const id = json.data?.[0]?.id || json.data?.id;",
+                                    "    if (id) { pm.collectionVariables.set('user_id', id); }",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Get User Detail (Admin)",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/auth/users/{{user_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "users",
+                                "{{user_id}}"
+                            ]
+                        },
+                        "description": "Get user details by ID (admin only)"
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "if (pm.response.code === 200) {",
+                                    "    const json = pm.response.json();",
+                                    "    const id = json.data?.[0]?.id || json.data?.id;",
+                                    "    if (id) { pm.collectionVariables.set('user_id', id); }",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
                 }
             ],
             "description": "Authentication endpoints for user registration and login"
@@ -443,7 +537,7 @@
                                 "{{hotel_id}}"
                             ]
                         },
-                        "description": "Delete hotel (soft delete, admin only) - NEW FEATURE"
+                        "description": "Delete hotel (soft delete, admin only) - NEW FEATURE. Returns 200 OK with deleted ID."
                     },
                     "response": []
                 }
@@ -712,7 +806,7 @@
                                 "{{room_id}}"
                             ]
                         },
-                        "description": "Delete room (soft delete, admin only) - NEW FEATURE"
+                        "description": "Delete room (soft delete, admin only) - NEW FEATURE. Returns 200 OK with deleted ID."
                     },
                     "response": []
                 }
@@ -753,7 +847,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"room_type_id\": \"{{room_type_id}}\",\n  \"check_in\": \"2025-12-15\",\n  \"check_out\": \"2025-12-20\"\n}"
+                            "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"room_type_id\": \"{{room_type_id}}\",\n  \"check_in\": \"2025-12-15\",\n  \"check_out\": \"2025-12-20\",\n  \"guests\": 2\n}"
                         },
                         "url": {
                             "raw": "{{base_url}}/bookings",
@@ -764,7 +858,7 @@
                                 "bookings"
                             ]
                         },
-                        "description": "Create a new booking (authenticated users)"
+                        "description": "Create a new booking (authenticated users). Requires user_id and guests."
                     },
                     "response": []
                 },
@@ -816,22 +910,31 @@
                     "response": []
                 },
                 {
-                    "name": "Check-in Booking",
+                    "name": "Booking Checkpoint (Check-in)",
                     "request": {
                         "method": "POST",
-                        "header": [],
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"action\": \"check_in\"\n}"
+                        },
                         "url": {
-                            "raw": "{{base_url}}/bookings/{{booking_id}}/checkin",
+                            "raw": "{{base_url}}/bookings/{{booking_id}}/checkpoint",
                             "host": [
                                 "{{base_url}}"
                             ],
                             "path": [
                                 "bookings",
                                 "{{booking_id}}",
-                                "checkin"
+                                "checkpoint"
                             ]
                         },
-                        "description": "Check-in to a confirmed booking"
+                        "description": "Check-in to a confirmed booking using checkpoint endpoint"
                     },
                     "response": []
                 },
@@ -854,6 +957,55 @@
                         "description": "Cancel a booking (triggers refund if paid)"
                     },
                     "response": []
+                },
+                {
+                    "name": "Check Booking Status",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/bookings/{{booking_id}}/status",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "bookings",
+                                "{{booking_id}}",
+                                "status"
+                            ]
+                        },
+                        "description": "Check current status of a booking"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Change Booking Status",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"status\": \"confirmed\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/bookings/{{booking_id}}/status",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "bookings",
+                                "{{booking_id}}",
+                                "status"
+                            ]
+                        },
+                        "description": "Manually change booking status (e.g. to confirmed, cancelled, checked_in, completed)"
+                    },
+                    "response": []
                 }
             ],
             "description": "Booking lifecycle management endpoints"
@@ -861,6 +1013,50 @@
         {
             "name": "6. Payment Management",
             "item": [
+                {
+                    "name": "Get Payment by ID",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "if (pm.response.code === 200) {",
+                                    "    const json = pm.response.json();",
+                                    "    const id = json.data?.id;",
+                                    "    if (id) { pm.collectionVariables.set('payment_id', id); }",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/payments/{{payment_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "payments",
+                                "{{payment_id}}"
+                            ]
+                        },
+                        "description": "Get payment details by ID (admin token recommended)"
+                    },
+                    "response": []
+                },
                 {
                     "name": "Get Payment by Booking ID",
                     "event": [
@@ -883,13 +1079,13 @@
                         "method": "GET",
                         "header": [],
                         "url": {
-                            "raw": "{{base_url}}/payments/booking/{{booking_id}}",
+                            "raw": "{{base_url}}/payments/by-booking/{{booking_id}}",
                             "host": [
                                 "{{base_url}}"
                             ],
                             "path": [
                                 "payments",
-                                "booking",
+                                "by-booking",
                                 "{{booking_id}}"
                             ]
                         },
@@ -974,7 +1170,50 @@
             "name": "7. Notifications",
             "item": [
                 {
+                    "name": "Send Notification",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"target\": \"customer@example.com\",\n  \"type\": \"email\",\n  \"message\": \"This is a test notification\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/notifications",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "notifications"
+                            ]
+                        },
+                        "description": "Send a notification to a user (requires target and type)"
+                    },
+                    "response": []
+                },
+                {
                     "name": "List Notifications",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "if (pm.response.code === 200) {",
+                                    "    const response = pm.response.json();",
+                                    "    if (response.data && response.data.length > 0) {",
+                                    "        pm.collectionVariables.set('notification_id', response.data[0].id);",
+                                    "    }",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
                     "request": {
                         "method": "GET",
                         "header": [],
@@ -1000,6 +1239,25 @@
                         "description": "List user's notifications"
                     },
                     "response": []
+                },
+                {
+                    "name": "Get Notification by ID",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/notifications/{{notification_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "notifications",
+                                "{{notification_id}}"
+                            ]
+                        },
+                        "description": "Get notification details by ID"
+                    },
+                    "response": []
                 }
             ],
             "description": "Notification endpoints"
@@ -1013,10 +1271,12 @@
                         "method": "GET",
                         "header": [],
                         "url": {
-                            "raw": "{{base_url}}/gateway/aggregate/bookings/{{booking_id}}",
+                            "raw": "http://localhost:8088/gateway/aggregate/bookings/{{booking_id}}",
+                            "protocol": "http",
                             "host": [
-                                "{{base_url}}"
+                                "localhost"
                             ],
+                            "port": "8088",
                             "path": [
                                 "gateway",
                                 "aggregate",
@@ -1030,6 +1290,173 @@
                 }
             ],
             "description": "API Gateway aggregation endpoints"
+        },
+        {
+            "name": "9. Diagnostics",
+            "item": [
+                {
+                    "name": "API Gateway Health",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "http://localhost:8088/healthz",
+                            "protocol": "http",
+                            "host": [
+                                "localhost"
+                            ],
+                            "port": "8088",
+                            "path": [
+                                "healthz"
+                            ]
+                        },
+                        "description": "Check API Gateway health status"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "API Gateway Metrics",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "http://localhost:8088/metrics",
+                            "protocol": "http",
+                            "host": [
+                                "localhost"
+                            ],
+                            "port": "8088",
+                            "path": [
+                                "metrics"
+                            ]
+                        },
+                        "description": "Get API Gateway metrics (Prometheus format)"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "API Gateway Debug Routes",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "http://localhost:8088/debug/routes",
+                            "protocol": "http",
+                            "host": [
+                                "localhost"
+                            ],
+                            "port": "8088",
+                            "path": [
+                                "debug",
+                                "routes"
+                            ]
+                        },
+                        "description": "Debug API Gateway routes"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Auth Service Health",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "http://localhost:8080/healthz",
+                            "protocol": "http",
+                            "host": [
+                                "localhost"
+                            ],
+                            "port": "8080",
+                            "path": [
+                                "healthz"
+                            ]
+                        },
+                        "description": "Check Auth Service health status"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Hotel Service Health",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "http://localhost:8081/healthz",
+                            "protocol": "http",
+                            "host": [
+                                "localhost"
+                            ],
+                            "port": "8081",
+                            "path": [
+                                "healthz"
+                            ]
+                        },
+                        "description": "Check Hotel Service health status"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Booking Service Health",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "http://localhost:8082/healthz",
+                            "protocol": "http",
+                            "host": [
+                                "localhost"
+                            ],
+                            "port": "8082",
+                            "path": [
+                                "healthz"
+                            ]
+                        },
+                        "description": "Check Booking Service health status"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Payment Service Health",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "http://localhost:8083/healthz",
+                            "protocol": "http",
+                            "host": [
+                                "localhost"
+                            ],
+                            "port": "8083",
+                            "path": [
+                                "healthz"
+                            ]
+                        },
+                        "description": "Check Payment Service health status"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Notification Service Health",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "http://localhost:8085/healthz",
+                            "protocol": "http",
+                            "host": [
+                                "localhost"
+                            ],
+                            "port": "8085",
+                            "path": [
+                                "healthz"
+                            ]
+                        },
+                        "description": "Check Notification Service health status"
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Health check endpoints for all microservices"
         }
     ],
     "event": [

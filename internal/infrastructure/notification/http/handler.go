@@ -37,7 +37,7 @@ func (h *Handler) Routes() http.Handler {
 // @Accept json
 // @Produce json
 // @Param request body dto.NotificationRequest true "Notification payload"
-// @Success 202 {object} notificationResponse
+// @Success 202 {object} dto.NotificationResponse
 // @Failure 400 {object} dto.ErrorResponse
 // @Router /notifications [post]
 func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
