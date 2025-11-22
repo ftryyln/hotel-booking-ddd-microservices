@@ -33,11 +33,16 @@ func (h *Handler) Routes() http.Handler {
 	r.Get("/hotels/{id}", h.getHotel)
 	r.Get("/room-types", h.listRoomTypes)
 	r.Get("/rooms", h.listRooms)
+	r.Get("/rooms/{id}", h.getRoom)
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.JWT(h.jwtSecret, "admin"))
 		r.Post("/hotels", h.createHotel)
+		r.Put("/hotels/{id}", h.updateHotel)
+		r.Delete("/hotels/{id}", h.deleteHotel)
 		r.Post("/room-types", h.createRoomType)
 		r.Post("/rooms", h.createRoom)
+		r.Put("/rooms/{id}", h.updateRoom)
+		r.Delete("/rooms/{id}", h.deleteRoom)
 	})
 	return r
 }
@@ -223,6 +228,142 @@ func (h *Handler) listRooms(w http.ResponseWriter, r *http.Request) {
 		resources = append(resources, utils.NewResource(room.ID, "room", "/api/v1/rooms/"+room.ID, room))
 	}
 	utils.RespondWithCount(w, http.StatusOK, "rooms listed", resources, len(resources))
+}
+
+// @Summary Update hotel
+// @Tags Hotels
+// @Accept json
+// @Produce json
+// @Param id path string true "Hotel ID"
+// @Param request body dto.HotelUpdateRequest true "Hotel update payload"
+// @Success 200 {object} dto.HotelResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Security BearerAuth
+// @Router /hotels/{id} [put]
+func (h *Handler) updateHotel(w http.ResponseWriter, r *http.Request) {
+	idParam := chi.URLParam(r, "id")
+	id, err := uuid.Parse(idParam)
+	if err != nil {
+		writeError(w, pkgErrors.New("bad_request", "invalid id"))
+		return
+	}
+	var req dto.HotelUpdateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, pkgErrors.New("bad_request", "invalid payload"))
+		return
+	}
+	if err := h.service.UpdateHotel(r.Context(), id, req); err != nil {
+		writeError(w, pkgErrors.FromError(err))
+		return
+	}
+	// Get updated hotel
+	resp, _ := h.service.GetHotel(r.Context(), id, query.Options{})
+	dtoResp := assembler.ToHotelResponse(resp)
+	resource := utils.NewResource(dtoResp.ID, "hotel", "/api/v1/hotels/"+dtoResp.ID, dtoResp)
+	utils.Respond(w, http.StatusOK, "hotel updated", resource)
+}
+
+// @Summary Delete hotel
+// @Tags Hotels
+// @Produce json
+// @Param id path string true "Hotel ID"
+// @Success 200 {object} dto.SuccessResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Security BearerAuth
+// @Router /hotels/{id} [delete]
+func (h *Handler) deleteHotel(w http.ResponseWriter, r *http.Request) {
+	idParam := chi.URLParam(r, "id")
+	id, err := uuid.Parse(idParam)
+	if err != nil {
+		writeError(w, pkgErrors.New("bad_request", "invalid id"))
+		return
+	}
+	if err := h.service.DeleteHotel(r.Context(), id); err != nil {
+		writeError(w, pkgErrors.FromError(err))
+		return
+	}
+	utils.Respond(w, http.StatusOK, "hotel deleted", map[string]string{"id": idParam})
+}
+
+// @Summary Get room by ID
+// @Tags Hotels
+// @Produce json
+// @Param id path string true "Room ID"
+// @Success 200 {object} dto.RoomResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Router /rooms/{id} [get]
+func (h *Handler) getRoom(w http.ResponseWriter, r *http.Request) {
+	idParam := chi.URLParam(r, "id")
+	id, err := uuid.Parse(idParam)
+	if err != nil {
+		writeError(w, pkgErrors.New("bad_request", "invalid id"))
+		return
+	}
+	room, err := h.service.GetRoom(r.Context(), id)
+	if err != nil {
+		writeError(w, pkgErrors.FromError(err))
+		return
+	}
+	dtoRoom := assembler.RoomResponse(room)
+	resource := utils.NewResource(dtoRoom.ID, "room", "/api/v1/rooms/"+dtoRoom.ID, dtoRoom)
+	utils.Respond(w, http.StatusOK, "room retrieved", resource)
+}
+
+// @Summary Update room
+// @Tags Hotels
+// @Accept json
+// @Produce json
+// @Param id path string true "Room ID"
+// @Param request body dto.RoomUpdateRequest true "Room update payload"
+// @Success 200 {object} dto.RoomResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Security BearerAuth
+// @Router /rooms/{id} [put]
+func (h *Handler) updateRoom(w http.ResponseWriter, r *http.Request) {
+	idParam := chi.URLParam(r, "id")
+	id, err := uuid.Parse(idParam)
+	if err != nil {
+		writeError(w, pkgErrors.New("bad_request", "invalid id"))
+		return
+	}
+	var req dto.RoomUpdateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, pkgErrors.New("bad_request", "invalid payload"))
+		return
+	}
+	if err := h.service.UpdateRoom(r.Context(), id, req); err != nil {
+		writeError(w, pkgErrors.FromError(err))
+		return
+	}
+	// Get updated room
+	room, _ := h.service.GetRoom(r.Context(), id)
+	dtoRoom := assembler.RoomResponse(room)
+	resource := utils.NewResource(dtoRoom.ID, "room", "/api/v1/rooms/"+dtoRoom.ID, dtoRoom)
+	utils.Respond(w, http.StatusOK, "room updated", resource)
+}
+
+// @Summary Delete room
+// @Tags Hotels
+// @Produce json
+// @Param id path string true "Room ID"
+// @Success 200 {object} dto.SuccessResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Security BearerAuth
+// @Router /rooms/{id} [delete]
+func (h *Handler) deleteRoom(w http.ResponseWriter, r *http.Request) {
+	idParam := chi.URLParam(r, "id")
+	id, err := uuid.Parse(idParam)
+	if err != nil {
+		writeError(w, pkgErrors.New("bad_request", "invalid id"))
+		return
+	}
+	if err := h.service.DeleteRoom(r.Context(), id); err != nil {
+		writeError(w, pkgErrors.FromError(err))
+		return
+	}
+	utils.Respond(w, http.StatusOK, "room deleted", map[string]string{"id": idParam})
 }
 
 func writeJSON(w http.ResponseWriter, status int, body any) {

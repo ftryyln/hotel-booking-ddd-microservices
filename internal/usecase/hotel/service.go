@@ -104,3 +104,57 @@ func (s *Service) ListRooms(ctx context.Context, opts query.Options) ([]domain.R
 	}
 	return rooms, nil
 }
+
+func (s *Service) UpdateHotel(ctx context.Context, id uuid.UUID, req dto.HotelUpdateRequest) error {
+	name, addr, err := valueobject.ValidateHotel(req.Name, req.Address)
+	if err != nil {
+		return err
+	}
+	h := domain.Hotel{
+		Name:        name,
+		Description: req.Description,
+		Address:     addr,
+	}
+	return s.repo.UpdateHotel(ctx, id, h)
+}
+
+func (s *Service) DeleteHotel(ctx context.Context, id uuid.UUID) error {
+	return s.repo.DeleteHotel(ctx, id)
+}
+
+func (s *Service) GetRoom(ctx context.Context, id uuid.UUID) (domain.Room, error) {
+	room, err := s.repo.GetRoom(ctx, id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return domain.Room{}, errors.New("not_found", "room not found")
+		}
+		return domain.Room{}, err
+	}
+	return room, nil
+}
+
+func (s *Service) UpdateRoom(ctx context.Context, id uuid.UUID, req dto.RoomUpdateRequest) error {
+	// Get existing room first
+	existing, err := s.repo.GetRoom(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	// Update only provided fields
+	if req.Number != "" {
+		existing.Number = req.Number
+	}
+	if req.Status != "" {
+		status, err := valueobject.NormalizeRoomStatus(req.Status)
+		if err != nil {
+			return err
+		}
+		existing.Status = string(status)
+	}
+
+	return s.repo.UpdateRoom(ctx, id, existing)
+}
+
+func (s *Service) DeleteRoom(ctx context.Context, id uuid.UUID) error {
+	return s.repo.DeleteRoom(ctx, id)
+}

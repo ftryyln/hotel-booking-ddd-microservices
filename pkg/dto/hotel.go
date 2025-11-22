@@ -60,3 +60,16 @@ type RoomTypeSummary struct {
 	Capacity int     `json:"capacity"`
 	Price    float64 `json:"price"`
 }
+
+// HotelUpdateRequest for updating hotel details.
+type HotelUpdateRequest struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Address     string `json:"address"`
+}
+
+// RoomUpdateRequest for updating room details.
+type RoomUpdateRequest struct {
+	Number string `json:"number,omitempty"`
+	Status string `json:"status,omitempty"`
+}

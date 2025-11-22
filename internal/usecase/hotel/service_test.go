@@ -131,3 +131,233 @@ func (h *hotelRepoStub) GetHotel(ctx context.Context, id uuid.UUID) (domain.Hote
 	}
 	return domain.Hotel{}, stdErrors.New("not found")
 }
+
+func (h *hotelRepoStub) UpdateHotel(ctx context.Context, id uuid.UUID, hotel domain.Hotel) error {
+	for i, ht := range h.hotels {
+		if ht.ID == id {
+			h.hotels[i].Name = hotel.Name
+			h.hotels[i].Description = hotel.Description
+			h.hotels[i].Address = hotel.Address
+			return nil
+		}
+	}
+	return stdErrors.New("not found")
+}
+
+func (h *hotelRepoStub) DeleteHotel(ctx context.Context, id uuid.UUID) error {
+	for i, ht := range h.hotels {
+		if ht.ID == id {
+			h.hotels = append(h.hotels[:i], h.hotels[i+1:]...)
+			return nil
+		}
+	}
+	return stdErrors.New("not found")
+}
+
+func (h *hotelRepoStub) GetRoom(ctx context.Context, id uuid.UUID) (domain.Room, error) {
+	for _, r := range h.rooms {
+		if r.ID == id {
+			return r, nil
+		}
+	}
+	return domain.Room{}, stdErrors.New("not found")
+}
+
+func (h *hotelRepoStub) UpdateRoom(ctx context.Context, id uuid.UUID, room domain.Room) error {
+	for i, r := range h.rooms {
+		if r.ID == id {
+			h.rooms[i].Number = room.Number
+			h.rooms[i].Status = room.Status
+			return nil
+		}
+	}
+	return stdErrors.New("not found")
+}
+
+func (h *hotelRepoStub) DeleteRoom(ctx context.Context, id uuid.UUID) error {
+	for i, r := range h.rooms {
+		if r.ID == id {
+			h.rooms = append(h.rooms[:i], h.rooms[i+1:]...)
+			return nil
+		}
+	}
+	return stdErrors.New("not found")
+}
+
+func TestUpdateHotel(t *testing.T) {
+	repo := &hotelRepoStub{}
+	svc := hotel.NewService(repo)
+	
+	// Create a hotel first
+	hID, err := svc.CreateHotel(context.Background(), dto.HotelRequest{
+		Name:        "Original Hotel",
+		Description: "Original description",
+		Address:     "Original address",
+	})
+	require.NoError(t, err)
+	
+	// Update the hotel
+	err = svc.UpdateHotel(context.Background(), hID, dto.HotelUpdateRequest{
+		Name:        "Updated Hotel",
+		Description: "Updated description",
+		Address:     "Updated address",
+	})
+	require.NoError(t, err)
+	
+	// Verify update
+	h, err := svc.GetHotel(context.Background(), hID, query.Options{})
+	require.NoError(t, err)
+	require.Equal(t, "Updated Hotel", h.Hotel.Name)
+	require.Equal(t, "Updated description", h.Hotel.Description)
+	require.Equal(t, "Updated address", h.Hotel.Address)
+}
+
+func TestUpdateHotelNotFound(t *testing.T) {
+	repo := &hotelRepoStub{}
+	svc := hotel.NewService(repo)
+	
+	err := svc.UpdateHotel(context.Background(), uuid.New(), dto.HotelUpdateRequest{
+		Name:    "Test",
+		Address: "Test",
+	})
+	require.Error(t, err)
+}
+
+func TestDeleteHotel(t *testing.T) {
+	repo := &hotelRepoStub{}
+	svc := hotel.NewService(repo)
+	
+	// Create a hotel
+	hID, err := svc.CreateHotel(context.Background(), dto.HotelRequest{
+		Name:    "Test Hotel",
+		Address: "Test address",
+	})
+	require.NoError(t, err)
+	
+	// Delete the hotel
+	err = svc.DeleteHotel(context.Background(), hID)
+	require.NoError(t, err)
+	
+	// Verify deletion
+	_, err = svc.GetHotel(context.Background(), hID, query.Options{})
+	require.Error(t, err)
+}
+
+func TestGetRoom(t *testing.T) {
+	repo := &hotelRepoStub{}
+	svc := hotel.NewService(repo)
+	
+	// Create room type and room
+	rtID, _ := svc.CreateRoomType(context.Background(), dto.RoomTypeRequest{
+		HotelID:   uuid.New().String(),
+		Name:      "Deluxe",
+		Capacity:  2,
+		BasePrice: 1000,
+	})
+	
+	roomID, err := svc.CreateRoom(context.Background(), dto.RoomRequest{
+		RoomTypeID: rtID.String(),
+		Number:     "101",
+		Status:     "available",
+	})
+	require.NoError(t, err)
+	
+	// Get room
+	room, err := svc.GetRoom(context.Background(), roomID)
+	require.NoError(t, err)
+	require.Equal(t, "101", room.Number)
+	require.Equal(t, "available", room.Status)
+}
+
+func TestUpdateRoom(t *testing.T) {
+	repo := &hotelRepoStub{}
+	svc := hotel.NewService(repo)
+	
+	// Create room
+	rtID, _ := svc.CreateRoomType(context.Background(), dto.RoomTypeRequest{
+		HotelID:   uuid.New().String(),
+		Name:      "Deluxe",
+		Capacity:  2,
+		BasePrice: 1000,
+	})
+	
+	roomID, err := svc.CreateRoom(context.Background(), dto.RoomRequest{
+		RoomTypeID: rtID.String(),
+		Number:     "101",
+		Status:     "available",
+	})
+	require.NoError(t, err)
+	
+	// Update room
+	err = svc.UpdateRoom(context.Background(), roomID, dto.RoomUpdateRequest{
+		Number: "102",
+		Status: "maintenance",
+	})
+	require.NoError(t, err)
+	
+	// Verify update
+	room, err := svc.GetRoom(context.Background(), roomID)
+	require.NoError(t, err)
+	require.Equal(t, "102", room.Number)
+	require.Equal(t, "maintenance", room.Status)
+}
+
+func TestUpdateRoomPartial(t *testing.T) {
+	repo := &hotelRepoStub{}
+	svc := hotel.NewService(repo)
+	
+	// Create room
+	rtID, _ := svc.CreateRoomType(context.Background(), dto.RoomTypeRequest{
+		HotelID:   uuid.New().String(),
+		Name:      "Deluxe",
+		Capacity:  2,
+		BasePrice: 1000,
+	})
+	
+	roomID, err := svc.CreateRoom(context.Background(), dto.RoomRequest{
+		RoomTypeID: rtID.String(),
+		Number:     "101",
+		Status:     "available",
+	})
+	require.NoError(t, err)
+	
+	// Update only status
+	err = svc.UpdateRoom(context.Background(), roomID, dto.RoomUpdateRequest{
+		Status: "maintenance",
+	})
+	require.NoError(t, err)
+	
+	// Verify partial update
+	room, err := svc.GetRoom(context.Background(), roomID)
+	require.NoError(t, err)
+	require.Equal(t, "101", room.Number) // Number unchanged
+	require.Equal(t, "maintenance", room.Status) // Status updated
+}
+
+func TestDeleteRoom(t *testing.T) {
+	repo := &hotelRepoStub{}
+	svc := hotel.NewService(repo)
+	
+	// Create room
+	rtID, _ := svc.CreateRoomType(context.Background(), dto.RoomTypeRequest{
+		HotelID:   uuid.New().String(),
+		Name:      "Deluxe",
+		Capacity:  2,
+		BasePrice: 1000,
+	})
+	
+	roomID, err := svc.CreateRoom(context.Background(), dto.RoomRequest{
+		RoomTypeID: rtID.String(),
+		Number:     "101",
+		Status:     "available",
+	})
+	require.NoError(t, err)
+	
+	// Delete room
+	err = svc.DeleteRoom(context.Background(), roomID)
+	require.NoError(t, err)
+	
+	// Verify deletion
+	_, err = svc.GetRoom(context.Background(), roomID)
+	require.Error(t, err)
+}

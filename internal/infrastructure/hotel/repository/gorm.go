@@ -121,12 +121,75 @@ func (r *GormRepository) ListRooms(ctx context.Context, opts query.Options) ([]d
 	return rooms, nil
 }
 
+func (r *GormRepository) GetRoom(ctx context.Context, id uuid.UUID) (domain.Room, error) {
+	var model roomModel
+	if err := r.db.WithContext(ctx).First(&model, "id = ?", id).Error; err != nil {
+		return domain.Room{}, translateErr(err)
+	}
+	return model.toDomain(), nil
+}
+
+func (r *GormRepository) UpdateRoom(ctx context.Context, id uuid.UUID, room domain.Room) error {
+	result := r.db.WithContext(ctx).Model(&roomModel{}).
+		Where("id = ?", id).
+		Updates(map[string]interface{}{
+			"number": room.Number,
+			"status": room.Status,
+		})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return pkgErrors.New("not_found", "room not found")
+	}
+	return nil
+}
+
+func (r *GormRepository) DeleteRoom(ctx context.Context, id uuid.UUID) error {
+	result := r.db.WithContext(ctx).Delete(&roomModel{}, "id = ?", id)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return pkgErrors.New("not_found", "room not found")
+	}
+	return nil
+}
+
 func (r *GormRepository) GetHotel(ctx context.Context, id uuid.UUID) (domain.Hotel, error) {
 	var model hotelModel
 	if err := r.db.WithContext(ctx).First(&model, "id = ?", id).Error; err != nil {
 		return domain.Hotel{}, translateErr(err)
 	}
 	return model.toDomain(), nil
+}
+
+func (r *GormRepository) UpdateHotel(ctx context.Context, id uuid.UUID, h domain.Hotel) error {
+	result := r.db.WithContext(ctx).Model(&hotelModel{}).
+		Where("id = ?", id).
+		Updates(map[string]interface{}{
+			"name":        h.Name,
+			"description": h.Description,
+			"address":     h.Address,
+		})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return pkgErrors.New("not_found", "hotel not found")
+	}
+	return nil
+}
+
+func (r *GormRepository) DeleteHotel(ctx context.Context, id uuid.UUID) error {
+	result := r.db.WithContext(ctx).Delete(&hotelModel{}, "id = ?", id)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return pkgErrors.New("not_found", "hotel not found")
+	}
+	return nil
 }
 
 type hotelModel struct {

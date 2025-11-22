@@ -61,12 +61,17 @@ func RoomTypesToDTO(rts []domain.RoomType) []dto.RoomTypeResponse {
 func RoomResponses(rooms []domain.Room) []dto.RoomResponse {
 	out := make([]dto.RoomResponse, 0, len(rooms))
 	for _, r := range rooms {
-		out = append(out, dto.RoomResponse{
-			ID:         r.ID.String(),
-			RoomTypeID: r.RoomTypeID.String(),
-			Number:     r.Number,
-			Status:     r.Status,
-		})
+		out = append(out, RoomResponse(r))
 	}
 	return out
+}
+
+// RoomResponse maps single room to DTO.
+func RoomResponse(r domain.Room) dto.RoomResponse {
+	return dto.RoomResponse{
+		ID:         r.ID.String(),
+		RoomTypeID: r.RoomTypeID.String(),
+		Number:     r.Number,
+		Status:     r.Status,
+	}
 }

@@ -13,6 +13,7 @@ import (
 	bookingnotification "github.com/ftryyln/hotel-booking-microservices/internal/infrastructure/booking/notification"
 	bookingpayment "github.com/ftryyln/hotel-booking-microservices/internal/infrastructure/booking/payment"
 	bookingrepo "github.com/ftryyln/hotel-booking-microservices/internal/infrastructure/booking/repository"
+	bookingworker "github.com/ftryyln/hotel-booking-microservices/internal/infrastructure/booking/worker"
 	hotelrepo "github.com/ftryyln/hotel-booking-microservices/internal/infrastructure/hotel/repository"
 	bookinguc "github.com/ftryyln/hotel-booking-microservices/internal/usecase/booking"
 	"github.com/ftryyln/hotel-booking-microservices/pkg/config"
@@ -66,6 +67,15 @@ func main() {
 	srv := server.New(cfg.HTTPPort, r, log)
 	srv.Start()
 
+	// Initialize and start auto-checkout scheduler
+	scheduler := bookingworker.NewAutoCheckoutScheduler(service, log)
+	if err := scheduler.Start(); err != nil {
+		log.Fatal("failed to start auto-checkout scheduler", zap.Error(err))
+	}
+	defer scheduler.Stop()
+
 	<-ctx.Done()
+	log.Info("Shutting down gracefully...")
+	scheduler.Stop()
 	_ = srv.Stop(context.Background())
 }

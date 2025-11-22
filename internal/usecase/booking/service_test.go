@@ -175,6 +175,13 @@ func (h *hotelRepoStub) ListRooms(context.Context, query.Options) ([]hdomain.Roo
 func (h *hotelRepoStub) GetHotel(context.Context, uuid.UUID) (hdomain.Hotel, error) {
 	return hdomain.Hotel{}, nil
 }
+func (h *hotelRepoStub) UpdateHotel(context.Context, uuid.UUID, hdomain.Hotel) error { return nil }
+func (h *hotelRepoStub) DeleteHotel(context.Context, uuid.UUID) error                { return nil }
+func (h *hotelRepoStub) GetRoom(context.Context, uuid.UUID) (hdomain.Room, error) {
+	return hdomain.Room{}, nil
+}
+func (h *hotelRepoStub) UpdateRoom(context.Context, uuid.UUID, hdomain.Room) error { return nil }
+func (h *hotelRepoStub) DeleteRoom(context.Context, uuid.UUID) error               { return nil }
 
 type paymentGatewayStub struct{}
 
@@ -191,4 +198,80 @@ type notificationGatewayStub struct{}
 
 func (n *notificationGatewayStub) Notify(context.Context, string, any) error {
 	return nil
+}
+
+func TestAutoCheckout(t *testing.T) {
+	repo := &bookingRepoStub{store: map[uuid.UUID]domain.Booking{}}
+	hotelRepo := &hotelRepoStub{roomType: hdomain.RoomType{ID: uuid.New(), BasePrice: 500000}}
+	payment := &paymentGatewayStub{}
+	notifier := &notificationGatewayStub{}
+	service := booking.NewService(repo, hotelRepo, payment, notifier)
+
+	today := time.Now().Truncate(24 * time.Hour)
+	tomorrow := today.Add(24 * time.Hour)
+	yesterday := today.Add(-24 * time.Hour)
+
+	// Create bookings with different scenarios
+	// 1. Booking that should be auto-checked-out (checkout today, status checked_in)
+	booking1 := domain.Booking{
+		ID:       uuid.New(),
+		UserID:   uuid.New(),
+		CheckIn:  yesterday,
+		CheckOut: today,
+		Status:   string(valueobject.StatusCheckedIn),
+	}
+	repo.store[booking1.ID] = booking1
+
+	// 2. Booking with checkout today but not checked in (should be ignored)
+	booking2 := domain.Booking{
+		ID:       uuid.New(),
+		UserID:   uuid.New(),
+		CheckIn:  yesterday,
+		CheckOut: today,
+		Status:   string(valueobject.StatusConfirmed),
+	}
+	repo.store[booking2.ID] = booking2
+
+	// 3. Booking checked in but checkout tomorrow (should be ignored)
+	booking3 := domain.Booking{
+		ID:       uuid.New(),
+		UserID:   uuid.New(),
+		CheckIn:  today,
+		CheckOut: tomorrow,
+		Status:   string(valueobject.StatusCheckedIn),
+	}
+	repo.store[booking3.ID] = booking3
+
+	// Run auto-checkout
+	count, err := service.AutoCheckout(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, 1, count) // Only booking1 should be checked out
+
+	// Verify booking1 is completed
+	updated, err := repo.FindByID(context.Background(), booking1.ID)
+	require.NoError(t, err)
+	require.Equal(t, string(valueobject.StatusCompleted), updated.Status)
+
+	// Verify booking2 is still confirmed
+	unchanged2, err := repo.FindByID(context.Background(), booking2.ID)
+	require.NoError(t, err)
+	require.Equal(t, string(valueobject.StatusConfirmed), unchanged2.Status)
+
+	// Verify booking3 is still checked in
+	unchanged3, err := repo.FindByID(context.Background(), booking3.ID)
+	require.NoError(t, err)
+	require.Equal(t, string(valueobject.StatusCheckedIn), unchanged3.Status)
+}
+
+func TestAutoCheckoutNoBookings(t *testing.T) {
+	repo := &bookingRepoStub{store: map[uuid.UUID]domain.Booking{}}
+	hotelRepo := &hotelRepoStub{roomType: hdomain.RoomType{ID: uuid.New(), BasePrice: 500000}}
+	payment := &paymentGatewayStub{}
+	notifier := &notificationGatewayStub{}
+	service := booking.NewService(repo, hotelRepo, payment, notifier)
+
+	// Run auto-checkout with no bookings
+	count, err := service.AutoCheckout(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, 0, count)
 }

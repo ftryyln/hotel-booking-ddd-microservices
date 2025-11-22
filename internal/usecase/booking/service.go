@@ -191,3 +191,42 @@ func (s *Service) publishEvents(ctx context.Context, events []pkgDomain.DomainEv
 	}
 }
 
+// AutoCheckout processes bookings that should be automatically checked out.
+// It finds all bookings with checkout_date = today and status = checked_in,
+// then completes them automatically.
+func (s *Service) AutoCheckout(ctx context.Context) (int, error) {
+	today := time.Now().Truncate(24 * time.Hour)
+	
+	// Find bookings that need auto-checkout
+	// We'll use the repository's List method with a filter
+	// For simplicity, we'll get all bookings and filter in memory
+	// In production, you'd want to add a specific repository method
+	allBookings, err := s.repo.List(ctx, query.Options{Limit: 1000})
+	if err != nil {
+		return 0, err
+	}
+
+	count := 0
+	for _, booking := range allBookings {
+		// Check if booking should be auto-checked-out
+		checkoutDate := booking.CheckOut.Truncate(24 * time.Hour)
+		if checkoutDate.Equal(today) && booking.Status == string(valueobject.StatusCheckedIn) {
+			// Complete the booking
+			if err := booking.Complete(); err != nil {
+				// Log error but continue with other bookings
+				continue
+			}
+
+			if err := s.repo.Save(ctx, booking); err != nil {
+				// Log error but continue
+				continue
+			}
+
+			s.publishEvents(ctx, booking.Events())
+			booking.ClearEvents()
+			count++
+		}
+	}
+
+	return count, nil
+}

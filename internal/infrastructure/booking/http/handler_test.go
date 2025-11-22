@@ -93,6 +93,13 @@ func (h *hotelRepoStub) ListRooms(context.Context, query.Options) ([]hdomain.Roo
 func (h *hotelRepoStub) GetHotel(context.Context, uuid.UUID) (hdomain.Hotel, error) {
 	return hdomain.Hotel{}, nil
 }
+func (h *hotelRepoStub) UpdateHotel(context.Context, uuid.UUID, hdomain.Hotel) error { return nil }
+func (h *hotelRepoStub) DeleteHotel(context.Context, uuid.UUID) error                { return nil }
+func (h *hotelRepoStub) GetRoom(context.Context, uuid.UUID) (hdomain.Room, error) {
+	return hdomain.Room{}, nil
+}
+func (h *hotelRepoStub) UpdateRoom(context.Context, uuid.UUID, hdomain.Room) error { return nil }
+func (h *hotelRepoStub) DeleteRoom(context.Context, uuid.UUID) error               { return nil }
 
 type paymentGatewayStub struct{}
 

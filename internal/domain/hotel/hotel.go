@@ -40,11 +40,16 @@ type Room struct {
 type Repository interface {
 	CreateHotel(ctx context.Context, h Hotel) error
 	ListHotels(ctx context.Context, opts query.Options) ([]Hotel, error)
+	GetHotel(ctx context.Context, id uuid.UUID) (Hotel, error)
+	UpdateHotel(ctx context.Context, id uuid.UUID, h Hotel) error
+	DeleteHotel(ctx context.Context, id uuid.UUID) error
 	CreateRoomType(ctx context.Context, rt RoomType) error
 	ListRoomTypes(ctx context.Context, hotelID uuid.UUID) ([]RoomType, error)
 	ListAllRoomTypes(ctx context.Context, opts query.Options) ([]RoomType, error)
 	CreateRoom(ctx context.Context, room Room) error
+	GetRoom(ctx context.Context, id uuid.UUID) (Room, error)
+	UpdateRoom(ctx context.Context, id uuid.UUID, room Room) error
+	DeleteRoom(ctx context.Context, id uuid.UUID) error
 	GetRoomType(ctx context.Context, id uuid.UUID) (RoomType, error)
 	ListRooms(ctx context.Context, opts query.Options) ([]Room, error)
-	GetHotel(ctx context.Context, id uuid.UUID) (Hotel, error)
 }
