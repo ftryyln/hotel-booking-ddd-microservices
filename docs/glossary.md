@@ -49,3 +49,15 @@ The period of stay.
 
 #### Pricing Service
 Domain service responsible for calculating the final price, applying complex rules like seasonal rates, discounts, and surcharges.
+
+### System Mechanisms
+
+#### Soft Delete (Penghapusan Lunak)
+A technique where data is not permanently removed from the database but marked as deleted using a timestamp (`deleted_at`).
+- **Active**: `deleted_at` is NULL.
+- **Deleted**: `deleted_at` has a timestamp value.
+
+#### Auto-Checkout (Checkout Otomatis)
+A background process (CronJob) that automatically completes bookings when the checkout date is reached.
+- **Schedule**: Runs daily at 10:00 AM.
+- **Target**: Bookings with `status=checked_in` and `check_out_date=today`.

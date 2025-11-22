@@ -89,6 +89,7 @@ Code used by multiple services.
 - `repository/gorm.go`: Repository implementation using GORM.
 - `repository/factory.go`: Factory pattern for creating repositories.
 - `http/handler.go`: HTTP endpoints handler.
+- `worker/scheduler.go`: Background CronJob for auto-checkout.
 
 ---
 

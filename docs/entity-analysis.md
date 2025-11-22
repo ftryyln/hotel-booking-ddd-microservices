@@ -82,7 +82,7 @@ erDiagram
 | `password` | TEXT | NOT NULL | Stored as hash (bcrypt). |
 | `role` | TEXT | NOT NULL | `admin` (can manage hotels) or `customer` (booking only). |
 
-### 2. Hotel ⭐ UPDATED
+### 2. Hotel 
 **Table**: `hotels`
 **Domain**: `hotel.Hotel`
 
@@ -98,8 +98,8 @@ erDiagram
 **CRUD Operations**:
 - ✅ Create (POST /hotels) - Admin only
 - ✅ Read (GET /hotels, GET /hotels/{id}) - Public
-- ✅ Update (PUT /hotels/{id}) - Admin only ⭐ NEW
-- ✅ Delete (DELETE /hotels/{id}) - Admin only, soft delete ⭐ NEW
+- ✅ Update (PUT /hotels/{id}) - Admin only 
+- ✅ Delete (DELETE /hotels/{id}) - Admin only, soft delete 
 
 ### 3. Room Type
 **Table**: `room_types`
@@ -112,7 +112,7 @@ erDiagram
 | `capacity` | INT | NOT NULL | Maximum guest capacity (for booking validation). |
 | `base_price`| NUMERIC| NOT NULL | Price per night (basis for total calculation). |
 
-### 4. Room (Physical Unit) ⭐ UPDATED
+### 4. Room (Physical Unit) 
 **Table**: `rooms`
 **Domain**: `hotel.Room`
 
@@ -126,11 +126,11 @@ erDiagram
 
 **CRUD Operations**:
 - ✅ Create (POST /rooms) - Admin only
-- ✅ Read (GET /rooms, GET /rooms/{id}) - Public ⭐ NEW
-- ✅ Update (PUT /rooms/{id}) - Admin only ⭐ NEW
-- ✅ Delete (DELETE /rooms/{id}) - Admin only, soft delete ⭐ NEW
+- ✅ Read (GET /rooms, GET /rooms/{id}) - Public 
+- ✅ Update (PUT /rooms/{id}) - Admin only 
+- ✅ Delete (DELETE /rooms/{id}) - Admin only, soft delete 
 
-### 5. Booking ⭐ UPDATED
+### 5. Booking 
 **Table**: `bookings`
 **Domain**: `booking.Booking`
 
@@ -144,7 +144,7 @@ erDiagram
 | `status` | TEXT | NOT NULL | Lifecycle: `pending_payment` → `confirmed` → `checked_in` → `completed` (or `cancelled`). |
 | `total_price`| NUMERIC| NOT NULL | Final price after discount/calculation. |
 
-**Auto-Checkout Feature** ⭐ NEW:
+**Auto-Checkout Feature** :
 - CronJob runs daily at 10:00 AM
 - Automatically transitions bookings from `checked_in` to `completed` when `check_out` date = today
 - Implemented using `robfig/cron/v3` in booking-service
@@ -175,13 +175,13 @@ erDiagram
     - User creates Booking -> Status `pending_payment`.
     - System creates related Payment record.
     - User pays -> Payment status `paid` -> Booking status `confirmed`.
-    - **Auto-Checkout** ⭐ NEW: CronJob automatically completes bookings at checkout date.
+    - **Auto-Checkout** : CronJob automatically completes bookings at checkout date.
 
 3.  **Data Integrity**:
     - All IDs use **UUID** (v4) to avoid collision and enumeration.
     - Foreign Keys (`REFERENCES`) ensure referential integrity (cannot book non-existent hotel).
     - `TIMESTAMPTZ` used to record time with clear time zone.
-    - **Soft Delete** ⭐ NEW: Hotels and Rooms use soft delete (`deleted_at` timestamp) to preserve data integrity.
+    - **Soft Delete** : Hotels and Rooms use soft delete (`deleted_at` timestamp) to preserve data integrity.
 
 ---
 
@@ -192,5 +192,5 @@ This database structure supports the core needs of the hotel booking application
 - ✅ **Inventory Management**: Separation of Room Type (Logical) and Room Unit (Physical).
 - ✅ **Transactional Integrity**: Booking and Payment separated but linked 1-to-1.
 - ✅ **Audit Trail**: `created_at` in every table.
-- ✅ **Full CRUD Operations** ⭐ NEW: Complete management capabilities for Hotel and Room entities.
-- ✅ **Automated Processes** ⭐ NEW: CronJob-based auto-checkout for operational efficiency.
+- ✅ **Full CRUD Operations** : Complete management capabilities for Hotel and Room entities.
+- ✅ **Automated Processes** : CronJob-based auto-checkout for operational efficiency.

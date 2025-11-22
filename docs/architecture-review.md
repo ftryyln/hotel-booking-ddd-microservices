@@ -256,6 +256,8 @@ The system follows Clean Architecture / Hexagonal Architecture:
 │   Domain (Business Logic)           │ ← domain/*
 ├─────────────────────────────────────┤
 │   Infrastructure (DB, External)     │ ← infrastructure/*/repository
+├─────────────────────────────────────┤
+│   Background Workers (Cron)         │ ← infrastructure/*/worker
 └─────────────────────────────────────┘
 ```
 
