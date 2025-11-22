@@ -197,7 +197,8 @@ type hotelModel struct {
 	Name        string
 	Description string
 	Address     string
-	CreatedAt   time.Time `gorm:"column:created_at;autoCreateTime"`
+	CreatedAt   time.Time      `gorm:"column:created_at;autoCreateTime"`
+	DeletedAt   gorm.DeletedAt `gorm:"index"` // Soft delete support
 }
 
 func (hotelModel) TableName() string { return "hotels" }
@@ -239,6 +240,8 @@ type roomModel struct {
 	RoomTypeID uuid.UUID `gorm:"type:uuid;index"`
 	Number     string
 	Status     string
+	CreatedAt  time.Time      `gorm:"column:created_at;autoCreateTime"` // Added for audit trail
+	DeletedAt  gorm.DeletedAt `gorm:"index"`                            // Soft delete support
 }
 
 func (roomModel) TableName() string { return "rooms" }
