@@ -111,9 +111,11 @@ func (p *paymentRepoStub) FindByBookingID(ctx context.Context, bookingID uuid.UU
 	return domain.Payment{}, errors.New("not found")
 }
 
-func (p *paymentRepoStub) UpdateStatus(ctx context.Context, id uuid.UUID, status, paymentURL string) error {
+func (p *paymentRepoStub) UpdateStatus(ctx context.Context, id uuid.UUID, status, paymentURL, rawPayload, signature string) error {
 	if pay, ok := p.store[id]; ok {
 		pay.Status = status
+		pay.WebhookPayload = rawPayload
+		pay.WebhookSignature = signature
 		p.store[id] = pay
 		return nil
 	}

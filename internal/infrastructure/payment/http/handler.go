@@ -91,6 +91,12 @@ func (h *Handler) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		writeError(w, pkgErrors.New("bad_request", "invalid webhook"))
 		return
 	}
+	if req.Signature == "" {
+		req.Signature = r.Header.Get("X-CALLBACK-TOKEN")
+		if req.Signature == "" {
+			req.Signature = r.Header.Get("x-callback-token")
+		}
+	}
 	cmd, err := assembler.FromWebhook(req, string(body))
 	if err != nil {
 		writeError(w, pkgErrors.FromError(err))

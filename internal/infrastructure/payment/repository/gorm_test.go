@@ -32,7 +32,7 @@ func TestPaymentGormRepository(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, p.ID, found.ID)
 
-	require.NoError(t, r.UpdateStatus(context.Background(), p.ID, "paid", "url"))
+	require.NoError(t, r.UpdateStatus(context.Background(), p.ID, "paid", "url", "payload", "sig"))
 	updated, err := r.FindByID(context.Background(), p.ID)
 	require.NoError(t, err)
 	require.Equal(t, "paid", updated.Status)

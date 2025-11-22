@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 
+	paymentdomain "github.com/ftryyln/hotel-booking-microservices/internal/domain/payment"
 	paymentbooking "github.com/ftryyln/hotel-booking-microservices/internal/infrastructure/payment/booking"
 	paymenthttp "github.com/ftryyln/hotel-booking-microservices/internal/infrastructure/payment/http"
 	paymentprovider "github.com/ftryyln/hotel-booking-microservices/internal/infrastructure/payment/provider"
@@ -38,7 +39,18 @@ func main() {
 	}
 
 	repo := paymentrepo.NewGormRepository(db)
-	provider := paymentprovider.NewXenditMockProvider(cfg.PaymentProviderKey)
+	var provider paymentdomain.Provider
+	if cfg.XenditAPIKey != "" {
+		opt := paymentprovider.XenditOptions{
+			BaseURL:         cfg.XenditBaseURL,
+			SuccessURL:      cfg.XenditSuccessURL,
+			FailureURL:      cfg.XenditFailureURL,
+			InvoiceDuration: cfg.XenditInvoiceDuration,
+		}
+		provider = paymentprovider.NewXenditProvider(cfg.XenditAPIKey, cfg.XenditCallbackToken, opt)
+	} else {
+		provider = paymentprovider.NewXenditMockProvider(cfg.PaymentProviderKey)
+	}
 	statusClient := paymentbooking.NewHTTPStatusClient(cfg.BookingServiceURL)
 	service := paymentuc.NewService(repo, provider, statusClient)
 	handler := paymenthttp.NewHandler(service)

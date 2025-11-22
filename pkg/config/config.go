@@ -20,6 +20,17 @@ type Config struct {
 	NotificationURL    string
 	AuthServiceURL     string
 	AggregateTargetURL string
+	XenditAPIKey       string
+	XenditCallbackToken string
+	XenditBaseURL      string
+	XenditSuccessURL   string
+	XenditFailureURL   string
+	XenditInvoiceDuration time.Duration
+	SMTPHost           string
+	SMTPPort           int
+	SMTPUsername       string
+	SMTPPassword       string
+	SMTPFrom           string
 	RateLimitPerMinute int
 	GatewayMode        string
 	RoutesFile         string
@@ -46,6 +57,17 @@ func Load() Config {
 		NotificationURL:    getEnv("NOTIFICATION_SERVICE_URL", "http://notification-service:8085"),
 		AuthServiceURL:     getEnv("AUTH_SERVICE_URL", "http://auth-service:8080"),
 		AggregateTargetURL: getEnv("AGGREGATE_TARGET_URL", "http://hotel-service:8081"),
+		XenditAPIKey:       getEnv("XENDIT_API_KEY", ""),
+		XenditCallbackToken: getEnv("XENDIT_CALLBACK_TOKEN", ""),
+		XenditBaseURL:      getEnv("XENDIT_BASE_URL", "https://api.xendit.co"),
+		XenditSuccessURL:   getEnv("XENDIT_SUCCESS_URL", ""),
+		XenditFailureURL:   getEnv("XENDIT_FAILURE_URL", ""),
+		XenditInvoiceDuration: durationEnv("XENDIT_INVOICE_DURATION", 15*time.Minute),
+		SMTPHost:           getEnv("SMTP_HOST", ""),
+		SMTPPort:           intEnv("SMTP_PORT", 587),
+		SMTPUsername:       getEnv("SMTP_USERNAME", ""),
+		SMTPPassword:       getEnv("SMTP_PASSWORD", ""),
+		SMTPFrom:           getEnv("SMTP_FROM", ""),
 		RateLimitPerMinute: limit,
 		GatewayMode:        strings.ToLower(getEnv("GATEWAY_MODE", "whitelist")),
 		RoutesFile:         getEnv("GATEWAY_ROUTES_FILE", "config/routes.yml"),

@@ -63,7 +63,7 @@ func (s *Service) HandleWebhook(ctx context.Context, cmd assembler.WebhookComman
 		return pkgErrors.New("not_found", "payment not found")
 	}
 
-	targetStatus, err := valueobject.ValidatePaymentStatus(cmd.Status)
+	targetStatus, err := mapProviderStatus(cmd.Status)
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func (s *Service) HandleWebhook(ctx context.Context, cmd assembler.WebhookComman
 		return pkgErrors.New("forbidden", "invalid signature")
 	}
 
-	if err := s.repo.UpdateStatus(ctx, payment.ID, string(targetStatus), payment.PaymentURL); err != nil {
+	if err := s.repo.UpdateStatus(ctx, payment.ID, string(targetStatus), payment.PaymentURL, cmd.RawPayload, cmd.Signature); err != nil {
 		return err
 	}
 
@@ -99,6 +99,19 @@ func (s *Service) HandleWebhook(ctx context.Context, cmd assembler.WebhookComman
 	}
 
 	return nil
+}
+
+func mapProviderStatus(status string) (valueobject.PaymentStatus, error) {
+	switch status {
+	case "PENDING", "pending":
+		return valueobject.PaymentPending, nil
+	case "PAID", "paid":
+		return valueobject.PaymentPaid, nil
+	case "EXPIRED", "FAILED", "expired", "failed", "REFUNDED", "refunded":
+		return valueobject.PaymentFailed, nil
+	default:
+		return valueobject.ValidatePaymentStatus(status)
+	}
 }
 
 // Refund requests refund via provider.

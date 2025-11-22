@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	domain "github.com/ftryyln/hotel-booking-microservices/internal/domain/notification"
 	dispatcher "github.com/ftryyln/hotel-booking-microservices/internal/infrastructure/notification/dispatcher"
 	notificationhttp "github.com/ftryyln/hotel-booking-microservices/internal/infrastructure/notification/http"
 	notificationuc "github.com/ftryyln/hotel-booking-microservices/internal/usecase/notification"
@@ -24,7 +25,12 @@ func main() {
 	cfg := config.Load()
 	log := logger.New()
 
-	dispatch := dispatcher.NewLoggerDispatcher(log)
+	var dispatch domain.Dispatcher
+	if cfg.SMTPHost != "" && cfg.SMTPFrom != "" {
+		dispatch = dispatcher.NewEmailDispatcher(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUsername, cfg.SMTPPassword, cfg.SMTPFrom)
+	} else {
+		dispatch = dispatcher.NewLoggerDispatcher(log)
+	}
 	service := notificationuc.NewService(dispatch)
 	handler := notificationhttp.NewHandler(service)
 

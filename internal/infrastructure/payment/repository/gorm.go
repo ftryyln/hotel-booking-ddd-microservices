@@ -21,9 +21,6 @@ func NewGormRepository(db *gorm.DB) *GormRepository { return &GormRepository{db:
 
 // AutoMigrate ensures schema is present.
 func AutoMigrate(db *gorm.DB) error {
-	if db.Migrator().HasTable(&paymentModel{}) {
-		return nil
-	}
 	return db.AutoMigrate(&paymentModel{})
 }
 
@@ -51,10 +48,16 @@ func (r *GormRepository) FindByBookingID(ctx context.Context, bookingID uuid.UUI
 	return toDomain(model), nil
 }
 
-func (r *GormRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status, paymentURL string) error {
+func (r *GormRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status, paymentURL, rawPayload, signature string) error {
 	updates := map[string]any{"status": status}
 	if paymentURL != "" {
 		updates["payment_url"] = paymentURL
+	}
+	if rawPayload != "" {
+		updates["webhook_payload"] = rawPayload
+	}
+	if signature != "" {
+		updates["webhook_signature"] = signature
 	}
 	res := r.db.WithContext(ctx).Model(&paymentModel{}).Where("id = ?", id).Updates(updates)
 	if err := res.Error; err != nil {
@@ -67,41 +70,47 @@ func (r *GormRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status,
 }
 
 type paymentModel struct {
-	ID         uuid.UUID `gorm:"type:uuid;primaryKey"`
-	BookingID  uuid.UUID `gorm:"type:uuid;uniqueIndex"`
-	Amount     float64   `gorm:"type:numeric"`
-	Currency   string
-	Status     string `gorm:"index"`
-	Provider   string
-	PaymentURL string
-	CreatedAt  time.Time `gorm:"column:created_at;autoCreateTime"`
+	ID               uuid.UUID `gorm:"type:uuid;primaryKey"`
+	BookingID        uuid.UUID `gorm:"type:uuid;uniqueIndex"`
+	Amount           float64   `gorm:"type:numeric"`
+	Currency         string
+	Status           string `gorm:"index"`
+	Provider         string
+	PaymentURL       string
+	WebhookPayload   string `gorm:"type:text"`
+	WebhookSignature string
+	CreatedAt        time.Time `gorm:"column:created_at;autoCreateTime"`
 }
 
 func (paymentModel) TableName() string { return "payments" }
 
 func toModel(p domain.Payment) paymentModel {
 	return paymentModel{
-		ID:         p.ID,
-		BookingID:  p.BookingID,
-		Amount:     p.Amount,
-		Currency:   p.Currency,
-		Status:     p.Status,
-		Provider:   p.Provider,
-		PaymentURL: p.PaymentURL,
-		CreatedAt:  p.CreatedAt,
+		ID:               p.ID,
+		BookingID:        p.BookingID,
+		Amount:           p.Amount,
+		Currency:         p.Currency,
+		Status:           p.Status,
+		Provider:         p.Provider,
+		PaymentURL:       p.PaymentURL,
+		WebhookPayload:   p.WebhookPayload,
+		WebhookSignature: p.WebhookSignature,
+		CreatedAt:        p.CreatedAt,
 	}
 }
 
 func toDomain(m paymentModel) domain.Payment {
 	return domain.Payment{
-		ID:         m.ID,
-		BookingID:  m.BookingID,
-		Amount:     m.Amount,
-		Currency:   m.Currency,
-		Status:     m.Status,
-		Provider:   m.Provider,
-		PaymentURL: m.PaymentURL,
-		CreatedAt:  m.CreatedAt,
+		ID:               m.ID,
+		BookingID:        m.BookingID,
+		Amount:           m.Amount,
+		Currency:         m.Currency,
+		Status:           m.Status,
+		Provider:         m.Provider,
+		PaymentURL:       m.PaymentURL,
+		WebhookPayload:   m.WebhookPayload,
+		WebhookSignature: m.WebhookSignature,
+		CreatedAt:        m.CreatedAt,
 	}
 }
 

@@ -22,6 +22,8 @@ type Payment struct {
 	Status     string
 	Provider   string
 	PaymentURL string
+	WebhookPayload  string
+	WebhookSignature string
 	CreatedAt  time.Time
 }
 
@@ -37,7 +39,7 @@ type Repository interface {
 	Create(ctx context.Context, p Payment) error
 	FindByID(ctx context.Context, id uuid.UUID) (Payment, error)
 	FindByBookingID(ctx context.Context, bookingID uuid.UUID) (Payment, error)
-	UpdateStatus(ctx context.Context, id uuid.UUID, status, paymentURL string) error
+	UpdateStatus(ctx context.Context, id uuid.UUID, status, paymentURL, rawPayload, signature string) error
 }
 
 // BookingStatusUpdater notifies booking service.
