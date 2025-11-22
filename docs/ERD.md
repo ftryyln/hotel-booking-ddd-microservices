@@ -21,6 +21,7 @@ erDiagram
         string description
         string address
         timestamp created_at
+        timestamp deleted_at
     }
 
     ROOM_TYPES ||--|{ ROOMS : "contains"
@@ -39,6 +40,7 @@ erDiagram
         uuid room_type_id FK
         string number
         string status "available|maintenance|occupied"
+        timestamp deleted_at
     }
 
     %% Booking Lifecycle
