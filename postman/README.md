@@ -1,7 +1,7 @@
 # Postman Collection - Hotel Booking Microservices
 
 ## 📋 Overview
-This Postman collection contains all 25 API endpoints for the Hotel Booking Microservices system, organized into 8 logical folders for easy testing.
+This Postman collection contains all 27 API endpoints for the Hotel Booking Microservices system, organized into 8 logical folders for easy testing.
 
 ## 🚀 Quick Start
 
@@ -85,13 +85,15 @@ The collection uses **Collection Variables** for dynamic data:
 - Payment Webhook (Xendit Mock)
 - Refund Payment (Admin) 🔒
 
-### 7. Notifications (1 endpoint)
+### 7. Notifications (3 endpoints)
+- Send Notification 🔒
 - List Notifications 🔒
+- Get Notification by ID 🔒
 
 ### 8. Gateway Aggregation (1 endpoint)
 - Get Booking Aggregate 🔒
 
-**Total: 25 Endpoints**
+**Total: 27 Endpoints**
 
 ## 🔐 Authentication
 
@@ -191,5 +193,5 @@ The system includes a **CronJob** that runs daily at 10:00 AM to automatically:
 ---
 
 **Created for**: Hotel Booking Microservices Tech Test  
-**Total Endpoints**: 25  
+**Total Endpoints**: 27  
 **New Features**: 5 CRUD endpoints + Auto-Checkout CronJob
