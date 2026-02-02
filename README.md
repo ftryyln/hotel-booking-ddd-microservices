@@ -1,13 +1,33 @@
-﻿# Hotel Booking Microservices Platform
+﻿# 🏨 Hotel Booking Microservices Platform
 
-[![Go Version](https://img.shields.io/badge/Go-1.23-blue.svg)](https://golang.org/doc/go1.23)
-[![Architecture](https://img.shields.io/badge/Architecture-DDD%20%26%20Clean%20Arch-green.svg)](docs/architecture-review.md)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Postman](https://img.shields.io/badge/Postman-Collection-orange?logo=postman)](postman/Hotel-Booking-Microservices.postman_collection.json)
+<p align="center">
+  <strong>An enterprise-grade distributive system built with Domain-Driven Design (DDD) & Clean Architecture</strong><br>
+  Engineered for Scability, Resilience, and Technical Excellence using Go (Golang)
+</p>
 
-> **A production-grade, backend-only hotel booking system demonstrating advanced Domain-Driven Design (DDD) and SOLID principles in Go.**
+<p align="center">
+  <img src="https://img.shields.io/badge/Go-1.23-00ADD8?style=for-the-badge&logo=go" alt="Go">
+  <img src="https://img.shields.io/badge/Architecture-DDD_%26_Clean-004088?style=for-the-badge&logo=architecture" alt="Architecture">
+  <img src="https://img.shields.io/badge/Microservices-6_Services-EB4034?style=for-the-badge&logo=kubernetes" alt="Microservices">
+  <img src="https://img.shields.io/badge/PostgreSQL-Data--Integrity-336791?style=for-the-badge&logo=postgresql" alt="PostgreSQL">
+  <img src="https://img.shields.io/badge/Docker-Containerized-2496ED?style=for-the-badge&logo=docker" alt="Docker">
+</p>
 
-This platform is decomposed into **six microservices** behind an API Gateway, featuring a robust event-driven architecture, payment abstraction, and comprehensive documentation.
+---
+
+## 📝 Project Mission
+
+**Hotel Booking Microservices** is a production-ready, backend-only ecosystem designed to handle the complex lifecycles of hotel reservations. This project serves as a showcase of **Senior-level Backend Engineering** in Go, demonstrating deep proficiency in:
+
+- **Domain-Driven Design (DDD)**: Managing complex business logic through Aggregates, Value Objects, and Specifications.
+- **Microservices Orchestration**: 6 independent services communicating via a resilient API Gateway.
+- **Clean Architecture (Hexagonal)**: Strict separation of concerns to ensure maintainability and testability.
+- **Event-Driven Patterns**: Leveraging domain events for cross-context consistency.
+
+---
+
+## 🏗️ Technical Highlight: The "Why"
+In a monolithic world, a failure in the notification system or a payment lag can paralyze the whole booking flow. This platform solves that through **decoupled services**. Each service (Auth, Hotel, Booking, Payment, Notification) is ownable, scalable, and resilient.
 
 ---
 
